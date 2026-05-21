@@ -1,44 +1,31 @@
-import OpenAI from "openai";
 import { NextRequest, NextResponse } from "next/server";
-
-export const runtime = 'nodejs';
+export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB (Whisper API上限)
-
 export async function POST(req: NextRequest) {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json({ error: "OPENAI_API_KEYが設定されていません" }, { status: 500 });
-  }
-
-  const openai = new OpenAI({ apiKey });
-
   try {
     const formData = await req.formData();
-    const file = formData.get("file") as File | null;
-
+    const file = formData.get("file") as File;
     if (!file) {
-      return NextResponse.json({ error: "音声ファイルが見つかりません" }, { status: 400 });
+      return NextResponse.json({ error: "ファイルがありません" }, { status: 400 });
     }
-
-    if (file.size > MAX_FILE_SIZE) {
-      return NextResponse.json(
-        { error: `ファイルサイズが25MBを超えています（${(file.size / 1024 / 1024).toFixed(1)}MB）。ファイルを分割するか、より短い録音を使用してください。` },
-        { status: 413 }
-      );
-    }
-
-    const transcription = await openai.audio.transcriptions.create({
-      file,
-      model: "whisper-1",
-      language: "ja",
+    const openaiFormData = new FormData();
+    openaiFormData.append("file", file);
+    openaiFormData.append("model", "whisper-1");
+    openaiFormData.append("language", "ja");
+    const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+      },
+      body: openaiFormData,
     });
-
-    return NextResponse.json({ text: transcription.text });
-  } catch (err) {
-    console.error("Whisper API error:", err);
-    const message = err instanceof Error ? err.message : "不明なエラー";
-    return NextResponse.json({ error: `文字起こしエラー: ${message}` }, { status: 500 });
+    const data = await response.json();
+    if (!response.ok) {
+      return NextResponse.json({ error: data.error?.message || "文字起こし失敗" }, { status: response.status });
+    }
+    return NextResponse.json({ text: data.text });
+  } catch (error) {
+    return NextResponse.json({ error: "サーバーエラー" }, { status: 500 });
   }
 }
