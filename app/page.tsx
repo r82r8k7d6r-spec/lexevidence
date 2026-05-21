@@ -1,65 +1,161 @@
-import Image from "next/image";
+"use client";
+import { useState } from "react";
+import Link from "next/link";
+import { FormData as AppFormData, GeneratedReport } from "@/types";
+import Step1BasicInfo from "@/components/Step1BasicInfo";
+import Step2LineData from "@/components/Step2LineData";
+import Step3Screenshots from "@/components/Step3Screenshots";
+import Step4Audio from "@/components/Step4Audio";
+import Step5Confirm from "@/components/Step5Confirm";
+import Step6Result from "@/components/Step6Result";
+
+const STEPS = ["基本情報", "LINEトーク", "スクリーンショット", "音声", "確認", "結果"];
+
+const initialFormData: AppFormData = {
+  basicInfo: {
+    applicantName: "",
+    opponentName: "",
+    marriageDate: "",
+    discoveryDate: "",
+    relationship: "",
+    additionalInfo: "",
+    affairPartnerName: "",
+    affairPartnerAge: "",
+    affairPartnerOccupation: "",
+    affairPartnerMeetingContext: "",
+    affairStartPeriod: "",
+  },
+  lineData: { text: "" },
+  screenshots: [],
+  audioData: { transcription: "" },
+};
 
 export default function Home() {
+  const [step, setStep] = useState(0);
+  const [formData, setFormData] = useState<AppFormData>(initialFormData);
+  const [report, setReport] = useState<GeneratedReport | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const next = () => setStep((s) => Math.min(s + 1, 5));
+  const back = () => setStep((s) => Math.max(s - 1, 0));
+
+  const handleSubmit = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "生成に失敗しました");
+      setReport(data.report);
+      setStep(5);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "エラーが発生しました");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const reset = () => {
+    setStep(0);
+    setFormData(initialFormData);
+    setReport(null);
+    setError(null);
+  };
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main className="min-h-screen bg-gradient-to-br from-slate-100 to-blue-50 py-10 px-4">
+      <div className="max-w-3xl mx-auto">
+        {/* ヘッダー */}
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">弁護士提出用 証拠資料作成システム</h1>
+          <p className="text-gray-500 mt-1 text-sm">不倫慰謝料請求 弁護士提出用資料 自動生成システム</p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+
+        {/* ステップインジケーター */}
+        {step < 5 && (
+          <div className="flex items-center mb-8 overflow-x-auto pb-2">
+            {STEPS.slice(0, 5).map((label, i) => (
+              <div key={i} className="flex items-center shrink-0">
+                <div className={`flex items-center gap-1.5 ${i <= step ? "text-blue-600" : "text-gray-400"}`}>
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 ${i < step ? "bg-blue-600 border-blue-600 text-white" : i === step ? "border-blue-600 text-blue-600" : "border-gray-300"}`}>
+                    {i < step ? "✓" : i + 1}
+                  </div>
+                  <span className="text-xs font-medium hidden sm:block">{label}</span>
+                </div>
+                {i < 4 && <div className={`h-0.5 w-6 sm:w-10 mx-1 ${i < step ? "bg-blue-600" : "bg-gray-200"}`} />}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* カード */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 md:p-8">
+          {error && (
+            <div className="mb-4 bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">
+              {error}
+            </div>
+          )}
+
+          {step === 0 && (
+            <Step1BasicInfo
+              data={formData.basicInfo}
+              onChange={(basicInfo) => setFormData((f) => ({ ...f, basicInfo }))}
+              onNext={next}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+          )}
+          {step === 1 && (
+            <Step2LineData
+              data={formData.lineData}
+              onChange={(lineData) => setFormData((f) => ({ ...f, lineData }))}
+              onNext={next}
+              onBack={back}
+            />
+          )}
+          {step === 2 && (
+            <Step3Screenshots
+              screenshots={formData.screenshots}
+              onChange={(screenshots) => setFormData((f) => ({ ...f, screenshots }))}
+              onNext={next}
+              onBack={back}
+            />
+          )}
+          {step === 3 && (
+            <Step4Audio
+              data={formData.audioData}
+              onChange={(audioData) => setFormData((f) => ({ ...f, audioData }))}
+              onNext={next}
+              onBack={back}
+            />
+          )}
+          {step === 4 && (
+            <Step5Confirm
+              formData={formData}
+              onSubmit={handleSubmit}
+              onBack={back}
+              loading={loading}
+            />
+          )}
+          {step === 5 && report && (
+            <Step6Result report={report} onReset={reset} />
+          )}
         </div>
-      </main>
-    </div>
+
+        <footer className="mt-6 text-center space-y-1">
+          <p className="text-xs text-gray-400">
+            本ツールはAIによる補助資料生成です。法的判断は必ず弁護士にご相談ください。
+          </p>
+          <p className="text-xs">
+            <Link href="/terms" className="text-blue-400 hover:text-blue-600 underline">
+              利用規約・免責事項
+            </Link>
+          </p>
+        </footer>
+      </div>
+    </main>
   );
 }
