@@ -15,7 +15,6 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "弁護士提出用 証拠資料作成システム",
   description: "不倫慰謝料請求のための弁護士提出用資料をAIが自動生成するシステム",
-  colorScheme: "light",
 };
 
 export default function RootLayout({
@@ -26,10 +25,14 @@ export default function RootLayout({
   return (
     <html
       lang="ja"
+      data-theme="light"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-      style={{ colorScheme: "light" }}
     >
-      <body className="min-h-full flex flex-col" style={{ backgroundColor: "white", color: "#111827" }}>{children}</body>
+      <head>
+        <meta name="color-scheme" content="light" />
+        <meta name="supported-color-schemes" content="light" />
+      </head>
+      <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );
 }

@@ -1,49 +1,41 @@
 @import "tailwindcss";
 
-/*
-  Tailwind v4: dark variant を class-based に切り替え。
-  .dark クラスをどこにも付けないため dark: ユーティリティは永久に発火しない。
-*/
+/* Tailwind v4: dark variant をクラスベースに変更（.dark クラスがない限り発火しない） */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* ブラウザのシステムダークモードをページレベルで完全無効化 */
-:root {
-  color-scheme: only light;
+html, html[data-theme="light"] {
+  color-scheme: light !important;
 }
 
-*,
-*::before,
-*::after {
-  color-scheme: only light;
+*, *::before, *::after {
+  box-sizing: border-box;
 }
 
 body {
-  background-color: #ffffff;
-  color: #111827;
+  background-color: #ffffff !important;
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* フォーム要素にも明示的に文字色を設定（UA stylesheet の上書き） */
-input,
-textarea,
-select,
-button {
-  color: #111827;
-  background-color: #ffffff;
-}
-
-/* 念のため: dark メディアクエリが発火しても強制的にライトモードに戻す */
 @media (prefers-color-scheme: dark) {
-  html,
+  html {
+    color-scheme: light !important;
+    background: #ffffff !important;
+    color: #111827 !important;
+  }
   body {
     background-color: #ffffff !important;
     color: #111827 !important;
+    -webkit-text-fill-color: #111827 !important;
   }
-  input,
-  textarea,
-  select {
-    background-color: #ffffff !important;
+  input, textarea, select, button, p, span, label, h1, h2, h3, h4, h5, h6, div {
     color: #111827 !important;
+    -webkit-text-fill-color: #111827 !important;
+  }
+  input, textarea, select {
+    background-color: #ffffff !important;
+    border-color: #d1d5db !important;
   }
 }
 
@@ -51,6 +43,7 @@ button {
   body {
     background: #fff !important;
     color: #1a1a1a !important;
+    -webkit-text-fill-color: #1a1a1a !important;
     font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", sans-serif;
     font-size: 12pt;
     line-height: 1.7;
