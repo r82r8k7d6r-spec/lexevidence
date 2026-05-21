@@ -10,7 +10,7 @@ export async function GET() {
   // Railway では x-forwarded-proto / host ヘッダーで本番 URL を取得できる
   const proto = headersList.get('x-forwarded-proto') || 'https'
   const host = headersList.get('host') || ''
-  const siteUrl = process.env.SITE_URL || `${proto}://${host}`
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || `${proto}://${host}`
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
