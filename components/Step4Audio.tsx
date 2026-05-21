@@ -9,51 +9,11 @@ interface Props {
   onBack: () => void;
 }
 
-const SAMPLE_RATE = 16000;
-const CHUNK_SECONDS = 90; // 90秒 × 16kHz × 2byte = ~2.75MB/chunk
-const MAX_DIRECT_BYTES = 4 * 1024 * 1024; // 4MB 以下はそのまま送信
+const MAX_FILE_BYTES = 4 * 1024 * 1024; // 4MB
 
-function samplesToWav(samples: Int16Array, sampleRate: number): Blob {
-  const buf = new ArrayBuffer(44 + samples.byteLength);
-  const v = new DataView(buf);
-  const w = (off: number, s: string) => {
-    for (let i = 0; i < s.length; i++) v.setUint8(off + i, s.charCodeAt(i));
-  };
-  w(0, "RIFF"); v.setUint32(4, 36 + samples.byteLength, true);
-  w(8, "WAVE"); w(12, "fmt ");
-  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
-  v.setUint32(24, sampleRate, true); v.setUint32(28, sampleRate * 2, true);
-  v.setUint16(32, 2, true); v.setUint16(34, 16, true);
-  w(36, "data"); v.setUint32(40, samples.byteLength, true);
-  new Int16Array(buf, 44).set(samples);
-  return new Blob([buf], { type: "audio/wav" });
-}
-
-async function decodeToMono16k(file: File): Promise<Int16Array> {
-  const audioCtx = new AudioContext();
-  const decoded = await audioCtx.decodeAudioData(await file.arrayBuffer());
-  await audioCtx.close();
-
-  const numSamples = Math.ceil(decoded.duration * SAMPLE_RATE);
-  const offline = new OfflineAudioContext(1, numSamples, SAMPLE_RATE);
-  const src = offline.createBufferSource();
-  src.buffer = decoded;
-  src.connect(offline.destination);
-  src.start(0);
-  const rendered = await offline.startRendering();
-
-  const raw = rendered.getChannelData(0);
-  const out = new Int16Array(raw.length);
-  for (let i = 0; i < raw.length; i++) {
-    const s = Math.max(-1, Math.min(1, raw[i]));
-    out[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
-  }
-  return out;
-}
-
-async function transcribeBlob(blob: Blob, name: string): Promise<string> {
+async function transcribeBlob(file: File): Promise<string> {
   const fd = new FormData();
-  fd.append("file", new File([blob], name, { type: blob.type }));
+  fd.append("file", file);
   const res = await fetch("/api/transcribe", { method: "POST", body: fd });
   const json = await res.json();
   if (!res.ok) throw new Error(json.error || "文字起こし失敗");
@@ -75,43 +35,28 @@ export default function Step4Audio({ data, onChange, onNext, onBack }: Props) {
 
     const names = files.map((f) => f.name).join("|||");
     onChange({ ...data, fileName: names });
-    setIsTranscribing(true);
     setTranscribeError("");
 
+    // 4MB 超のファイルがある場合は手動入力を促す
+    const oversized = files.filter((f) => f.size > MAX_FILE_BYTES);
+    if (oversized.length > 0) {
+      setTranscribeError(
+        `ファイルが大きすぎます。手動で文字起こし内容を入力してください。（目安：4MB以下）\n` +
+        oversized.map((f) => `・${f.name}（${(f.size / 1024 / 1024).toFixed(1)}MB）`).join("\n")
+      );
+      return;
+    }
+
+    setIsTranscribing(true);
     const results: string[] = [];
 
     for (const file of files) {
       try {
-        // 4MB 以下はそのまま送信
-        if (file.size <= MAX_DIRECT_BYTES) {
-          setTranscribeStatus(`文字起こし中: ${file.name}`);
-          const text = await transcribeBlob(file, file.name);
-          results.push(files.length > 1 ? `【${file.name}】\n${text}` : text);
-          continue;
-        }
-
-        // 4MB 超: 16kHz モノラルに圧縮してチャンク分割
-        setTranscribeStatus(`圧縮中: ${file.name}`);
-        const samples = await decodeToMono16k(file);
-        const chunkSize = SAMPLE_RATE * CHUNK_SECONDS;
-        const numChunks = Math.ceil(samples.length / chunkSize);
-        const chunkTexts: string[] = [];
-
-        for (let i = 0; i < numChunks; i++) {
-          setTranscribeStatus(
-            `文字起こし中: ${file.name}（${i + 1} / ${numChunks}）`
-          );
-          const chunk = samples.slice(i * chunkSize, (i + 1) * chunkSize);
-          const wav = samplesToWav(chunk, SAMPLE_RATE);
-          chunkTexts.push(await transcribeBlob(wav, `chunk_${i}.wav`));
-        }
-
-        const combined = chunkTexts.join(" ");
-        results.push(files.length > 1 ? `【${file.name}】\n${combined}` : combined);
+        setTranscribeStatus(`文字起こし中: ${file.name}`);
+        const text = await transcribeBlob(file);
+        results.push(files.length > 1 ? `【${file.name}】\n${text}` : text);
       } catch (err) {
-        setTranscribeError(
-          err instanceof Error ? err.message : "文字起こしに失敗しました"
-        );
+        setTranscribeError(err instanceof Error ? err.message : "文字起こしに失敗しました");
       }
     }
 
@@ -158,7 +103,7 @@ export default function Step4Audio({ data, onChange, onNext, onBack }: Props) {
                 クリックしてMP3 / M4A / WAV などを選択（複数可）
               </p>
               <p className="text-gray-400 text-xs mt-1">
-                アップロード後、自動で文字起こしします
+                4MB以下のファイルは自動で文字起こしします
               </p>
             </>
           )}
@@ -172,7 +117,7 @@ export default function Step4Audio({ data, onChange, onNext, onBack }: Props) {
           onChange={handleFiles}
         />
         <p className="text-xs text-gray-400 mt-1">
-          ※ 大きなファイルは自動的に圧縮・分割して処理します
+          ※ 4MB超のファイルは自動文字起こし不可。テキストを手動で貼り付けてください。
         </p>
 
         {transcribeError && (

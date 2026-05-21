@@ -71,9 +71,8 @@ export default function Home() {
     <main className="min-h-screen bg-gradient-to-br from-slate-100 to-blue-50 py-10 px-4">
       <div className="max-w-3xl mx-auto">
         {/* iOSダークモード注意書き */}
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-3 mb-6 text-xs text-yellow-800">
-          ※ iPhoneをダークモードでご利用の場合、文字が見えにくくなる場合があります。<br />
-          設定 → 画面表示と明るさ → ライト に変更してご利用ください。
+        <div style={{backgroundColor: '#fefce8', border: '1px solid #fde047', borderRadius: '8px', padding: '10px 16px', marginBottom: '16px', fontSize: '13px', color: '#854d0e'}}>
+          ⚠️ iPhoneをダークモードでご利用の場合、文字が見えにくくなる場合があります。「設定 → 画面表示と明るさ → ライト」に変更してご利用ください。
         </div>
 
         {/* ヘッダー */}
