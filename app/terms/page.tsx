@@ -59,9 +59,19 @@ export default function TermsPage() {
             </ul>
           </section>
 
+          {/* 利用環境 */}
+          <section>
+            <h2 className="text-lg font-bold text-gray-900 border-b border-gray-200 pb-2 mb-3">5. 推奨利用環境</h2>
+            <ul className="space-y-2 list-disc list-inside">
+              <li>最新バージョンのChrome、Safari、Firefox、Edgeを推奨します。</li>
+              <li>iOSをダークモードでご利用の場合、表示が見にくくなる場合があります。ライトモードでのご利用を推奨します。</li>
+              <li>JavaScript が有効な環境でご利用ください。</li>
+            </ul>
+          </section>
+
           {/* 禁止事項 */}
           <section>
-            <h2 className="text-lg font-bold text-gray-900 border-b border-gray-200 pb-2 mb-3">5. 禁止事項</h2>
+            <h2 className="text-lg font-bold text-gray-900 border-b border-gray-200 pb-2 mb-3">6. 禁止事項</h2>
             <ul className="space-y-2 list-disc list-inside">
               <li>虚偽の情報を入力して資料を生成すること</li>
               <li>生成された資料を弁護士の確認なしに相手方への直接交渉に使用すること</li>
@@ -74,7 +84,7 @@ export default function TermsPage() {
 
           {/* 同意 */}
           <section className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h2 className="text-lg font-bold text-blue-900 mb-2">6. 利用規約への同意</h2>
+            <h2 className="text-lg font-bold text-blue-900 mb-2">7. 利用規約への同意</h2>
             <p className="text-blue-800">
               本サービスを利用することにより、上記の利用規約・免責事項すべてに同意したものとみなします。同意いただけない場合は、本サービスの利用をお控えください。
             </p>

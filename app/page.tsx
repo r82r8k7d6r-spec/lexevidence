@@ -70,6 +70,12 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-100 to-blue-50 py-10 px-4">
       <div className="max-w-3xl mx-auto">
+        {/* iOSダークモード注意書き */}
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-3 mb-6 text-xs text-yellow-800">
+          ※ iPhoneをダークモードでご利用の場合、文字が見えにくくなる場合があります。<br />
+          設定 → 画面表示と明るさ → ライト に変更してご利用ください。
+        </div>
+
         {/* ヘッダー */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900">弁護士提出用 証拠資料作成システム</h1>
