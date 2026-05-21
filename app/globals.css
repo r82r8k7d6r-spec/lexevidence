@@ -25,6 +25,24 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* ダークモードを完全に無効化 — スマホのシステム設定に関係なく強制ライトモード */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #ffffff;
+    --foreground: #111827;
+    color-scheme: light;
+  }
+  html, body {
+    background-color: white !important;
+    color: #111827 !important;
+  }
+  input, textarea, select, button {
+    background-color: white !important;
+    color: #111827 !important;
+    color-scheme: light;
+  }
+}
+
 @media print {
   body {
     background: #fff !important;
