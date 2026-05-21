@@ -6,7 +6,7 @@ export default function TermsPage() {
       <div className="max-w-3xl mx-auto">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-gray-900">利用規約・免責事項</h1>
-          <p className="text-gray-500 mt-1 text-sm">弁護士提出用 証拠資料作成システム</p>
+          <p className="text-gray-500 mt-1 text-sm">弁護士提出用 マモリAI</p>
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 md:p-8 space-y-8 text-sm text-gray-700 leading-relaxed">
@@ -15,7 +15,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-lg font-bold text-gray-900 border-b border-gray-200 pb-2 mb-3">1. サービス概要</h2>
             <p>
-              本サービス「弁護士提出用 証拠資料作成システム」（以下「本サービス」）は、不倫・不貞行為に基づく慰謝料請求を検討されている方が、弁護士への相談・依頼に際して提出する資料の作成を補助することを目的としたツールです。
+              本サービス「弁護士提出用 マモリAI」（以下「本サービス」）は、不倫・不貞行為に基づく慰謝料請求を検討されている方が、弁護士への相談・依頼に際して提出する資料の作成を補助することを目的としたツールです。
             </p>
             <p className="mt-2">
               ユーザーが入力した情報（LINEトーク、スクリーンショット、音声文字起こし等）をAI（Anthropic Claude）に送信し、法的資料の草案を自動生成します。

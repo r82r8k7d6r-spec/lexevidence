@@ -11,6 +11,11 @@ html, html[data-theme="light"] {
   box-sizing: border-box;
 }
 
+::placeholder {
+  color: #9ca3af !important;
+  opacity: 1;
+}
+
 body {
   background-color: #ffffff !important;
   color: #111827 !important;
@@ -36,6 +41,11 @@ body {
   input, textarea, select {
     background-color: #ffffff !important;
     border-color: #d1d5db !important;
+  }
+  input::placeholder, textarea::placeholder {
+    color: #9ca3af !important;
+    -webkit-text-fill-color: #9ca3af !important;
+    opacity: 1;
   }
 }
 

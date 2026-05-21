@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { FormData as AppFormData, GeneratedReport } from "@/types";
 import Step1BasicInfo from "@/components/Step1BasicInfo";
@@ -75,9 +76,21 @@ export default function Home() {
           ⚠️ iPhoneをダークモードでご利用の場合、文字が見えにくくなる場合があります。「設定 → 画面表示と明るさ → ライト」に変更してご利用ください。
         </div>
 
+        {/* メイン画像 */}
+        <div className="w-full max-w-2xl mx-auto mb-6">
+          <Image
+            src="/mamoriAI.jpg"
+            alt="マモリAI"
+            width={672}
+            height={400}
+            className="w-full rounded-2xl shadow-lg"
+            style={{ height: "auto" }}
+          />
+        </div>
+
         {/* ヘッダー */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">弁護士提出用 証拠資料作成システム</h1>
+          <h1 className="text-3xl font-bold text-gray-900">弁護士提出用 マモリAI</h1>
           <p className="text-gray-500 mt-1 text-sm">不倫慰謝料請求 弁護士提出用資料 自動生成システム</p>
         </div>
 

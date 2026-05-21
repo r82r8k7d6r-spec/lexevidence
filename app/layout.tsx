@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "弁護士提出用 証拠資料作成システム",
+  title: "弁護士提出用 マモリAI",
   description: "不倫慰謝料請求のための弁護士提出用資料をAIが自動生成するシステム",
 };
 
@@ -42,7 +42,7 @@ export default async function RootLayout({
       <body className="min-h-full flex flex-col">
         {user && (
           <header className="border-b border-gray-200 bg-white px-4 py-3 flex items-center justify-between print:hidden">
-            <span className="text-sm font-semibold text-gray-800">証拠資料作成システム</span>
+            <span className="text-sm font-semibold text-gray-800">マモリAI</span>
             <UserNav email={user.email ?? ""} />
           </header>
         )}
