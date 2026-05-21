@@ -21,8 +21,8 @@ export async function GET() {
   })
 
   if (error || !data.url) {
-    return NextResponse.redirect(new URL('/auth/login?error=oauth_failed', siteUrl))
+    return NextResponse.json({ error: 'oauth_failed' }, { status: 500 })
   }
 
-  return NextResponse.redirect(data.url)
+  return NextResponse.json({ url: data.url })
 }

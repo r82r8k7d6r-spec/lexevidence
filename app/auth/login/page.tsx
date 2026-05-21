@@ -28,9 +28,22 @@ export default function LoginPage() {
     router.refresh();
   };
 
-  const handleGoogleLogin = () => {
+  const handleGoogleLogin = async () => {
     setLoading(true);
-    window.location.href = "/api/auth/google";
+    setError(null);
+    try {
+      const res = await fetch("/api/auth/google");
+      const data = await res.json();
+      if (!res.ok || !data.url) {
+        setError("Googleログインに失敗しました");
+        setLoading(false);
+        return;
+      }
+      window.location.href = data.url;
+    } catch {
+      setError("Googleログインに失敗しました");
+      setLoading(false);
+    }
   };
 
   return (
