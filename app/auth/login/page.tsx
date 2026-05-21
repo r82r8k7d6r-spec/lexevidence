@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
@@ -33,94 +34,107 @@ export default function LoginPage() {
     setError(null);
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
+      provider: "google",
       options: {
         redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
       },
     });
     if (error) {
-      setError('Googleログインに失敗しました');
+      setError("Googleログインに失敗しました");
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">ログイン</h1>
-          <p className="mt-2 text-sm text-gray-600">マモリAI</p>
+    <div className="min-h-screen bg-white flex items-center justify-center px-4 font-sans">
+      <div className="w-full max-w-md py-16">
+
+        {/* ロゴ・タイトル */}
+        <div className="flex flex-col items-center mb-10">
+          <Image
+            src="/mamoriAI.jpg"
+            alt="マモリAI"
+            width={120}
+            height={120}
+            className="rounded-2xl mb-5"
+            style={{ height: "auto" }}
+          />
+          <h1 className="text-2xl font-bold text-gray-900">マモリAI</h1>
+          <p className="mt-1 text-sm text-gray-400">ログイン</p>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-8">
-          {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
-              {error}
-            </div>
-          )}
+        {/* エラー */}
+        {error && (
+          <div className="mb-6 px-4 py-3 bg-red-50 border border-red-100 rounded-lg text-red-600 text-sm">
+            {error}
+          </div>
+        )}
 
-          <form onSubmit={handleLogin} className="space-y-5">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                メールアドレス
-              </label>
-              <input
-                id="email"
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="example@email.com"
-              />
-            </div>
+        {/* フォーム */}
+        <form onSubmit={handleLogin} className="space-y-5">
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1.5">
+              メールアドレス
+            </label>
+            <input
+              id="email"
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-400 transition-colors"
+              placeholder="example@email.com"
+            />
+          </div>
 
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                パスワード
-              </label>
-              <input
-                id="password"
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="••••••••"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-2.5 px-4 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {loading ? "処理中..." : "ログイン"}
-            </button>
-          </form>
-
-          <div className="mt-4 flex items-center">
-            <div className="flex-1 border-t border-gray-200" />
-            <span className="px-3 text-xs text-gray-400">または</span>
-            <div className="flex-1 border-t border-gray-200" />
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1.5">
+              パスワード
+            </label>
+            <input
+              id="password"
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-400 transition-colors"
+              placeholder="••••••••"
+            />
           </div>
 
           <button
-            onClick={handleGoogleLogin}
+            type="submit"
             disabled={loading}
-            className="mt-4 w-full py-2.5 px-4 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+            className="w-full py-3 px-4 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            <GoogleIcon />
-            Googleでログイン
+            {loading ? "処理中..." : "ログイン"}
           </button>
+        </form>
 
-          <p className="mt-6 text-center text-sm text-gray-600">
-            アカウントをお持ちでない方は{" "}
-            <Link href="/auth/signup" className="text-blue-600 hover:underline font-medium">
-              新規登録
-            </Link>
-          </p>
+        {/* 区切り */}
+        <div className="flex items-center my-7">
+          <div className="flex-1 border-t border-gray-100" />
+          <span className="px-4 text-xs text-gray-400">または</span>
+          <div className="flex-1 border-t border-gray-100" />
         </div>
+
+        {/* Googleログイン */}
+        <button
+          onClick={handleGoogleLogin}
+          disabled={loading}
+          className="w-full py-3 px-4 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-3"
+        >
+          <GoogleIcon />
+          Googleでログイン
+        </button>
+
+        {/* 新規登録リンク */}
+        <p className="mt-10 text-center text-sm text-gray-400">
+          アカウントをお持ちでない方は{" "}
+          <Link href="/auth/signup" className="text-gray-900 font-medium hover:underline">
+            新規登録
+          </Link>
+        </p>
       </div>
     </div>
   );
