@@ -28,19 +28,9 @@ export default function LoginPage() {
     router.refresh();
   };
 
-  const handleGoogleLogin = async () => {
+  const handleGoogleLogin = () => {
     setLoading(true);
-    setError(null);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || location.origin}/auth/callback`,
-      },
-    });
-    if (error) {
-      setError("Googleログインに失敗しました");
-      setLoading(false);
-    }
+    window.location.href = "/api/auth/google";
   };
 
   return (
