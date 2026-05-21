@@ -1,13 +1,7 @@
 import OpenAI from "openai";
 import { NextRequest, NextResponse } from "next/server";
 
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: "30mb",
-    },
-  },
-};
+export const maxDuration = 60;
 
 const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB (Whisper API上限)
 
