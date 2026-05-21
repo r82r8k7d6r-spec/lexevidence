@@ -31,27 +31,15 @@ export default function LoginPage() {
   const handleGoogleLogin = async () => {
     setLoading(true);
     setError(null);
-    try {
-      const res = await fetch("/api/auth/google", { redirect: 'manual' });
-      if (res.type === 'opaqueredirect') {
-        // サーバーがリダイレクトを返した場合はそのまま遷移
-        window.location.href = '/api/auth/google';
-        return;
-      }
-      if (res.status !== 200) {
-        setError("Googleログインに失敗しました");
-        setLoading(false);
-        return;
-      }
-      const data = await res.json();
-      if (!data.url) {
-        setError("Googleログインに失敗しました");
-        setLoading(false);
-        return;
-      }
-      window.location.href = data.url;
-    } catch {
-      setError("Googleログインに失敗しました");
+    const supabase = createClient();
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+    if (error) {
+      setError('Googleログインに失敗しました');
       setLoading(false);
     }
   };
