@@ -23,7 +23,7 @@ export default function Step6Result({ report, onReset }: Props) {
         <div className="flex gap-2 flex-wrap">
           <button
             onClick={handlePrint}
-            className="bg-gray-800 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-gray-900 transition"
+            className="bg-blue-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition"
           >
             🖨 印刷・PDFとして保存
           </button>
