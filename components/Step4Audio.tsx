@@ -10,6 +10,7 @@ interface Props {
 }
 
 const MAX_FILE_BYTES = 100 * 1024 * 1024; // 100MB
+const MAX_TRANSCRIBE_BYTES = 25 * 1024 * 1024; // 25MB (OpenAI Whisper制限)
 
 async function transcribeBlob(file: File): Promise<string> {
   const fd = new FormData();
@@ -39,6 +40,14 @@ export default function Step4Audio({ data, onChange, onNext, onBack }: Props) {
 
     // 4MB 超のファイルがある場合は手動入力を促す
     const oversized = files.filter((f) => f.size > MAX_FILE_BYTES);
+    const tooLargeForWhisper = files.filter((f) => f.size > MAX_TRANSCRIBE_BYTES && f.size <= MAX_FILE_BYTES);
+if (tooLargeForWhisper.length > 0) {
+  setTranscribeError(
+    `25MB超のファイルはOpenAIの制限により自動文字起こしできません。手動で入力してください。\n` +
+    tooLargeForWhisper.map((f) => `・${f.name}（${(f.size / 1024 / 1024).toFixed(1)}MB）`).join("\n")
+  );
+  return;
+}
     if (oversized.length > 0) {
       setTranscribeError(
 `ファイルが大きすぎます。手動で文字起こし内容を入力してください。（目安：100MB以下）\n` +
