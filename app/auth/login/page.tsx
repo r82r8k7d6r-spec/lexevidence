@@ -32,9 +32,19 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/auth/google");
+      const res = await fetch("/api/auth/google", { redirect: 'manual' });
+      if (res.type === 'opaqueredirect') {
+        // サーバーがリダイレクトを返した場合はそのまま遷移
+        window.location.href = '/api/auth/google';
+        return;
+      }
+      if (res.status !== 200) {
+        setError("Googleログインに失敗しました");
+        setLoading(false);
+        return;
+      }
       const data = await res.json();
-      if (!res.ok || !data.url) {
+      if (!data.url) {
         setError("Googleログインに失敗しました");
         setLoading(false);
         return;
