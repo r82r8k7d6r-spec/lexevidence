@@ -9,7 +9,7 @@ interface Props {
   onBack: () => void;
 }
 
-const MAX_FILE_BYTES = 4 * 1024 * 1024; // 4MB
+const MAX_FILE_BYTES = 100 * 1024 * 1024; // 100MB
 
 async function transcribeBlob(file: File): Promise<string> {
   const fd = new FormData();
@@ -41,7 +41,7 @@ export default function Step4Audio({ data, onChange, onNext, onBack }: Props) {
     const oversized = files.filter((f) => f.size > MAX_FILE_BYTES);
     if (oversized.length > 0) {
       setTranscribeError(
-        `ファイルが大きすぎます。手動で文字起こし内容を入力してください。（目安：4MB以下）\n` +
+`ファイルが大きすぎます。手動で文字起こし内容を入力してください。（目安：100MB以下）\n` +
         oversized.map((f) => `・${f.name}（${(f.size / 1024 / 1024).toFixed(1)}MB）`).join("\n")
       );
       return;
@@ -103,7 +103,7 @@ export default function Step4Audio({ data, onChange, onNext, onBack }: Props) {
                 クリックしてMP3 / M4A / WAV などを選択（複数可）
               </p>
               <p className="text-gray-400 text-xs mt-1">
-                4MB以下のファイルは自動で文字起こしします
+                100MB以下のファイルは自動で文字起こしします
               </p>
             </>
           )}
@@ -117,7 +117,7 @@ export default function Step4Audio({ data, onChange, onNext, onBack }: Props) {
           onChange={handleFiles}
         />
         <p className="text-xs text-gray-400 mt-1">
-          ※ 4MB超のファイルは自動文字起こし不可。テキストを手動で貼り付けてください。
+          ※ 100MB超のファイルは自動文字起こし不可。テキストを手動で貼り付けてください。
         </p>
 
         {transcribeError && (
