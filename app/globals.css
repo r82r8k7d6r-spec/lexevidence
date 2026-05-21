@@ -1,16 +1,14 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #111827;
-  color-scheme: only light;
-}
+/*
+  Tailwind v4: dark variant を class-based に切り替え。
+  .dark クラスをどこにも付けないため dark: ユーティリティは永久に発火しない。
+*/
+@custom-variant dark (&:where(.dark, .dark *));
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* ブラウザのシステムダークモードをページレベルで完全無効化 */
+:root {
+  color-scheme: only light;
 }
 
 *,
@@ -20,26 +18,32 @@
 }
 
 body {
-  background-color: white;
+  background-color: #ffffff;
   color: #111827;
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* ダークモードを完全に無効化 — スマホのシステム設定に関係なく強制ライトモード */
+/* フォーム要素にも明示的に文字色を設定（UA stylesheet の上書き） */
+input,
+textarea,
+select,
+button {
+  color: #111827;
+  background-color: #ffffff;
+}
+
+/* 念のため: dark メディアクエリが発火しても強制的にライトモードに戻す */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #ffffff;
-    --foreground: #111827;
-    color-scheme: light;
-  }
-  html, body {
-    background-color: white !important;
+  html,
+  body {
+    background-color: #ffffff !important;
     color: #111827 !important;
   }
-  input, textarea, select, button {
-    background-color: white !important;
+  input,
+  textarea,
+  select {
+    background-color: #ffffff !important;
     color: #111827 !important;
-    color-scheme: light;
   }
 }
 
@@ -52,17 +56,14 @@ body {
     line-height: 1.7;
   }
 
-  /* 印刷時に非表示にする要素 */
   .no-print {
     display: none !important;
   }
 
-  /* 改ページ制御 */
   section {
     page-break-inside: avoid;
   }
 
-  /* テーブル */
   table {
     border-collapse: collapse;
     width: 100%;
@@ -78,13 +79,11 @@ body {
     print-color-adjust: exact;
   }
 
-  /* 背景色を印刷に反映 */
   * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
-  /* 余白 */
   @page {
     margin: 15mm 12mm;
   }
