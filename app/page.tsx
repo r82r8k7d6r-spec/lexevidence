@@ -10,7 +10,7 @@ import Step4Audio from "@/components/Step4Audio";
 import Step5Confirm from "@/components/Step5Confirm";
 import Step6Result from "@/components/Step6Result";
 
-const STEPS = ["基本情報", "LINEトーク", "スクリーンショット", "音声", "確認", "結果"];
+const STEPS = ["基本情報", "LINEトーク", "スクリーンショット", "音声", "確認"];
 
 const initialFormData: AppFormData = {
   basicInfo: {
@@ -69,52 +69,53 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-100 to-blue-50 py-10 px-4">
-      <div className="max-w-3xl mx-auto">
-        {/* iOSダークモード注意書き */}
-        <div style={{backgroundColor: '#fefce8', border: '1px solid #fde047', borderRadius: '8px', padding: '10px 16px', marginBottom: '16px', fontSize: '13px', color: '#854d0e'}}>
-          ⚠️ iPhoneをダークモードでご利用の場合、文字が見えにくくなる場合があります。「設定 → 画面表示と明るさ → ライト」に変更してご利用ください。
-        </div>
+    <main className="min-h-screen bg-white py-12 px-4 font-sans">
+      <div className="max-w-2xl mx-auto">
 
-        {/* メイン画像 */}
-        <div className="w-full max-w-2xl mx-auto mb-6">
+        {/* ヘッダー */}
+        <div className="flex flex-col items-center text-center mb-12">
           <Image
             src="/mamoriAI.jpg"
             alt="マモリAI"
-            width={672}
-            height={400}
-            className="w-full rounded-2xl shadow-lg"
+            width={300}
+            height={300}
+            className="rounded-2xl mb-6"
             style={{ height: "auto" }}
           />
-        </div>
-
-        {/* ヘッダー */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">弁護士提出用 マモリAI</h1>
-          <p className="text-gray-500 mt-1 text-sm">不倫慰謝料請求 弁護士提出用資料 自動生成システム</p>
+          <h1 className="text-3xl font-bold text-gray-900">マモリAI</h1>
+          <p className="mt-2 text-sm text-gray-400">不倫慰謝料請求 弁護士提出用資料 自動生成システム</p>
         </div>
 
         {/* ステップインジケーター */}
         {step < 5 && (
-          <div className="flex items-center mb-8 overflow-x-auto pb-2">
-            {STEPS.slice(0, 5).map((label, i) => (
+          <div className="flex items-center justify-center mb-10 overflow-x-auto pb-1">
+            {STEPS.map((label, i) => (
               <div key={i} className="flex items-center shrink-0">
-                <div className={`flex items-center gap-1.5 ${i <= step ? "text-blue-600" : "text-gray-400"}`}>
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 ${i < step ? "bg-blue-600 border-blue-600 text-white" : i === step ? "border-blue-600 text-blue-600" : "border-gray-300"}`}>
+                <div className={`flex items-center gap-1.5 ${i <= step ? "text-gray-900" : "text-gray-300"}`}>
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-colors
+                    ${i < step
+                      ? "bg-gray-900 border-gray-900 text-white"
+                      : i === step
+                        ? "border-gray-900 text-gray-900"
+                        : "border-gray-200 text-gray-300"
+                    }`}
+                  >
                     {i < step ? "✓" : i + 1}
                   </div>
                   <span className="text-xs font-medium hidden sm:block">{label}</span>
                 </div>
-                {i < 4 && <div className={`h-0.5 w-6 sm:w-10 mx-1 ${i < step ? "bg-blue-600" : "bg-gray-200"}`} />}
+                {i < STEPS.length - 1 && (
+                  <div className={`h-px w-6 sm:w-8 mx-2 ${i < step ? "bg-gray-900" : "bg-gray-200"}`} />
+                )}
               </div>
             ))}
           </div>
         )}
 
-        {/* カード */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 md:p-8">
+        {/* フォームカード */}
+        <div className="border border-gray-200 rounded-2xl p-6 md:p-8">
           {error && (
-            <div className="mb-4 bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">
+            <div className="mb-6 px-4 py-3 bg-red-50 border border-red-100 text-red-600 rounded-lg text-sm">
               {error}
             </div>
           )}
@@ -163,12 +164,12 @@ export default function Home() {
           )}
         </div>
 
-        <footer className="mt-6 text-center space-y-1">
+        <footer className="mt-8 text-center space-y-2">
           <p className="text-xs text-gray-400">
             本ツールはAIによる補助資料生成です。法的判断は必ず弁護士にご相談ください。
           </p>
           <p className="text-xs">
-            <Link href="/terms" className="text-blue-400 hover:text-blue-600 underline">
+            <Link href="/terms" className="text-gray-400 hover:text-gray-600 underline">
               利用規約・免責事項
             </Link>
           </p>
