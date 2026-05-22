@@ -17,12 +17,14 @@ function extractTopLevelJson(text: string): string | null {
 }
 
 const AFFAIR_KEYWORDS = [
-  "ホテル", "会いたい", "会えた", "会った", "好き", "愛してる", "キス", "抱きしめ",
+  "ホテル", "会いたい", "会えた", "会った", "好き", "好きだよ", "愛してる", "愛してるよ", "キス", "抱きしめ",
   "泊まり", "泊まった", "内緒", "秘密", "不倫", "浮気", "バレ", "ばれ",
   "部屋来て", "家来て", "送って", "迎えに", "夜会お", "朝帰り",
+  "セックス", "えっち", "体の関係", "関係を持", "手を繋", "デート", "二人で",
+  "別れて", "離婚", "嫁", "妻", "旦那", "夫",
 ];
 
-function extractKeywordContext(lines: string[], contextLines = 5, maxChars = 30000): string {
+function extractKeywordContext(lines: string[], contextLines = 5, maxChars = 100000): string {
   const hitIndices = new Set<number>();
   for (let i = 0; i < lines.length; i++) {
     if (AFFAIR_KEYWORDS.some((kw) => lines[i].includes(kw))) {
@@ -59,8 +61,8 @@ function buildLineContent(text: string): string {
 
   const lines = text.split("\n");
 
-  // 重要キーワード周辺（最大3万字）
-  const keywordPart = extractKeywordContext(lines, 5, 30000);
+  // 重要キーワード周辺（最大10万字）
+  const keywordPart = extractKeywordContext(lines, 5, 100000);
 
   // 先頭3万字
   const headPart = text.slice(0, 30000);

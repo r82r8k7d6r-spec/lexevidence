@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import OpenAI from "openai";
 
 export const config = {
   api: {
@@ -20,28 +21,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "fileBase64・fileName・mimeTypeは必須です" }, { status: 400 });
     }
 
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const buffer = Buffer.from(fileBase64, "base64");
-    const blob = new Blob([buffer], { type: mimeType });
+    const file = new File([buffer], fileName, { type: mimeType });
 
-    const openaiFormData = new FormData();
-    openaiFormData.append("file", blob, fileName);
-    openaiFormData.append("model", "whisper-1");
-    openaiFormData.append("language", "ja");
-
-    const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-      },
-      body: openaiFormData,
+    const transcription = await openai.audio.transcriptions.create({
+      file,
+      model: "whisper-1",
+      language: "ja",
     });
 
-    const data = await response.json();
-    if (!response.ok) {
-      return NextResponse.json({ error: data.error?.message || "文字起こし失敗" }, { status: response.status });
-    }
-    return NextResponse.json({ text: data.text });
+    return NextResponse.json({ text: transcription.text });
   } catch (error) {
-    return NextResponse.json({ error: "サーバーエラー" }, { status: 500 });
+    console.error("Transcribe error:", error);
+    const message = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ error: `文字起こしに失敗しました: ${message}` }, { status: 500 });
   }
 }

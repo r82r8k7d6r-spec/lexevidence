@@ -1,5 +1,5 @@
 "use client";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { ScreenshotFile } from "@/types";
 
 interface Props {
@@ -9,11 +9,24 @@ interface Props {
   onBack: () => void;
 }
 
+const MAX_IMAGES = 50;
+
 export default function Step3Screenshots({ screenshots, onChange, onNext, onBack }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const [error, setError] = useState("");
 
   const handleFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
+    e.target.value = "";
+    if (!files.length) return;
+
+    const total = screenshots.length + files.length;
+    if (total > MAX_IMAGES) {
+      setError(`画像は最大${MAX_IMAGES}枚までです。現在${screenshots.length}枚選択中のため、あと${MAX_IMAGES - screenshots.length}枚のみ追加できます。`);
+      return;
+    }
+
+    setError("");
     const promises = files.map(
       (file) =>
         new Promise<ScreenshotFile>((resolve) => {
@@ -32,10 +45,14 @@ export default function Step3Screenshots({ screenshots, onChange, onNext, onBack
         })
     );
     Promise.all(promises).then((newFiles) => onChange([...screenshots, ...newFiles]));
-    e.target.value = "";
   };
 
-  const remove = (id: string) => onChange(screenshots.filter((s) => s.id !== id));
+  const remove = (id: string) => {
+    onChange(screenshots.filter((s) => s.id !== id));
+    setError("");
+  };
+
+  const isOverLimit = screenshots.length > MAX_IMAGES;
 
   return (
     <div className="space-y-6">
@@ -47,9 +64,15 @@ export default function Step3Screenshots({ screenshots, onChange, onNext, onBack
       >
         <div className="text-4xl mb-2">📷</div>
         <p className="text-gray-600 font-medium">クリックして画像を追加</p>
-        <p className="text-gray-400 text-sm mt-1">JPG / PNG / WebP 対応・複数選択可</p>
+        <p className="text-gray-400 text-sm mt-1">JPG / PNG / WebP 対応・複数選択可（最大{MAX_IMAGES}枚）</p>
       </div>
       <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFiles} />
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">
+          {error}
+        </div>
+      )}
 
       {screenshots.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -74,13 +97,17 @@ export default function Step3Screenshots({ screenshots, onChange, onNext, onBack
         </div>
       )}
 
-      <p className="text-sm text-gray-500">{screenshots.length} 件の画像を選択中</p>
+      <p className="text-sm text-gray-500">{screenshots.length} / {MAX_IMAGES} 枚</p>
 
       <div className="flex justify-between">
         <button onClick={onBack} className="text-gray-600 px-6 py-2 rounded-lg border hover:bg-gray-50 transition">
           ← 戻る
         </button>
-        <button onClick={onNext} className="bg-blue-600 text-white px-8 py-2 rounded-lg font-medium hover:bg-blue-700 transition">
+        <button
+          onClick={onNext}
+          disabled={isOverLimit}
+          className="bg-blue-600 text-white px-8 py-2 rounded-lg font-medium hover:bg-blue-700 transition disabled:opacity-40 disabled:cursor-not-allowed"
+        >
           次へ →
         </button>
       </div>

@@ -96,8 +96,8 @@ export default function Home() {
                     ${i < step
                       ? "bg-blue-600 border-blue-600 text-white"
                       : i === step
-                        ? "bg-blue-600 border-blue-600 text-white"
-                        : "bg-gray-200 border-gray-200 text-gray-500"
+                        ? "bg-white border-blue-600 text-blue-600"
+                        : "bg-white border-gray-300 text-gray-400"
                     }`}
                   >
                     {i < step ? "✓" : i + 1}
