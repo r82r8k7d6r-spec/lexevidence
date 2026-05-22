@@ -14,15 +14,20 @@ export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   try {
-    const formData = await req.formData();
-    const file = formData.get("file") as File;
-    if (!file) {
-      return NextResponse.json({ error: "ファイルがありません" }, { status: 400 });
+    const { fileBase64, fileName, mimeType } = await req.json();
+
+    if (!fileBase64 || !fileName || !mimeType) {
+      return NextResponse.json({ error: "fileBase64・fileName・mimeTypeは必須です" }, { status: 400 });
     }
+
+    const buffer = Buffer.from(fileBase64, "base64");
+    const blob = new Blob([buffer], { type: mimeType });
+
     const openaiFormData = new FormData();
-    openaiFormData.append("file", file);
+    openaiFormData.append("file", blob, fileName);
     openaiFormData.append("model", "whisper-1");
     openaiFormData.append("language", "ja");
+
     const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
       method: "POST",
       headers: {
@@ -30,6 +35,7 @@ export async function POST(req: NextRequest) {
       },
       body: openaiFormData,
     });
+
     const data = await response.json();
     if (!response.ok) {
       return NextResponse.json({ error: data.error?.message || "文字起こし失敗" }, { status: response.status });
