@@ -13,9 +13,25 @@ const MAX_FILE_BYTES = 100 * 1024 * 1024; // 100MB
 const MAX_TRANSCRIBE_BYTES = 25 * 1024 * 1024; // 25MB (OpenAI Whisper制限)
 
 async function transcribeBlob(file: File): Promise<string> {
-  const fd = new FormData();
-  fd.append("file", file);
-  const res = await fetch("/api/transcribe", { method: "POST", body: fd });
+  const fileBase64 = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      resolve(result.split(",")[1]);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
+  const res = await fetch("/api/transcribe", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      fileBase64,
+      fileName: file.name,
+      mimeType: file.type,
+    }),
+  });
   const json = await res.json();
   if (!res.ok) throw new Error(json.error || "文字起こし失敗");
   return json.text as string;
