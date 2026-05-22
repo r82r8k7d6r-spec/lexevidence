@@ -9,29 +9,13 @@ interface Props {
   onBack: () => void;
 }
 
-const MAX_FILE_BYTES = 100 * 1024 * 1024; // 100MB
-const MAX_TRANSCRIBE_BYTES = 25 * 1024 * 1024; // 25MB (OpenAI Whisper制限)
+const MAX_TOTAL_BYTES = 100 * 1024 * 1024;  // 合計100MB
+const MAX_FILE_BYTES  =  25 * 1024 * 1024;  // 1ファイル25MB（Whisper上限）
 
 async function transcribeBlob(file: File): Promise<string> {
-  const fileBase64 = await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      resolve(result.split(",")[1]);
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-
-  const res = await fetch("/api/transcribe", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      fileBase64,
-      fileName: file.name,
-      mimeType: file.type,
-    }),
-  });
+  const fd = new FormData();
+  fd.append("file", file);
+  const res = await fetch("/api/transcribe", { method: "POST", body: fd });
   const json = await res.json();
   if (!res.ok) throw new Error(json.error || "文字起こし失敗");
   return json.text as string;
@@ -49,28 +33,29 @@ export default function Step4Audio({ data, onChange, onNext, onBack }: Props) {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
     e.target.value = "";
-
-    const names = files.map((f) => f.name).join("|||");
-    onChange({ ...data, fileName: names });
     setTranscribeError("");
 
-    // 4MB 超のファイルがある場合は手動入力を促す
-    const oversized = files.filter((f) => f.size > MAX_FILE_BYTES);
-    const tooLargeForWhisper = files.filter((f) => f.size > MAX_TRANSCRIBE_BYTES && f.size <= MAX_FILE_BYTES);
-if (tooLargeForWhisper.length > 0) {
-  setTranscribeError(
-    `25MB超のファイルはOpenAIの制限により自動文字起こしできません。手動で入力してください。\n` +
-    tooLargeForWhisper.map((f) => `・${f.name}（${(f.size / 1024 / 1024).toFixed(1)}MB）`).join("\n")
-  );
-  return;
-}
-    if (oversized.length > 0) {
+    // 1ファイル25MB超チェック
+    const tooLarge = files.filter((f) => f.size > MAX_FILE_BYTES);
+    if (tooLarge.length > 0) {
       setTranscribeError(
-`ファイルが大きすぎます。手動で文字起こし内容を入力してください。（目安：100MB以下）\n` +
-        oversized.map((f) => `・${f.name}（${(f.size / 1024 / 1024).toFixed(1)}MB）`).join("\n")
+        `1ファイルあたり25MBまでです。以下のファイルは送信できません:\n` +
+        tooLarge.map((f) => `・${f.name}（${(f.size / 1024 / 1024).toFixed(1)}MB）`).join("\n")
       );
       return;
     }
+
+    // 合計100MB超チェック
+    const totalSize = files.reduce((sum, f) => sum + f.size, 0);
+    if (totalSize > MAX_TOTAL_BYTES) {
+      setTranscribeError(
+        `合計ファイルサイズが100MBを超えています（${(totalSize / 1024 / 1024).toFixed(1)}MB）。ファイルを減らしてください。`
+      );
+      return;
+    }
+
+    const names = files.map((f) => f.name).join("|||");
+    onChange({ ...data, fileName: names });
 
     setIsTranscribing(true);
     const results: string[] = [];
@@ -128,7 +113,7 @@ if (tooLargeForWhisper.length > 0) {
                 クリックしてMP3 / M4A / WAV などを選択（複数可）
               </p>
               <p className="text-gray-400 text-xs mt-1">
-                100MB以下のファイルは自動で文字起こしします
+                1ファイルあたり25MBまで・合計100MBまで
               </p>
             </>
           )}
@@ -142,7 +127,7 @@ if (tooLargeForWhisper.length > 0) {
           onChange={handleFiles}
         />
         <p className="text-xs text-gray-400 mt-1">
-          ※ 100MB超のファイルは自動文字起こし不可。テキストを手動で貼り付けてください。
+          ※ 25MB超・合計100MB超のファイルはアップロード不可。テキストを手動で貼り付けてください。
         </p>
 
         {transcribeError && (

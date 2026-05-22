@@ -1,30 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: '100mb',
-    },
-  },
-};
-
 export const runtime = "nodejs";
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   try {
-    const { fileBase64, fileName, mimeType } = await req.json();
+    const formData = await req.formData();
+    const file = formData.get("file") as File | null;
 
-    if (!fileBase64 || !fileName || !mimeType) {
-      return NextResponse.json({ error: "fileBase64・fileName・mimeTypeは必須です" }, { status: 400 });
+    if (!file) {
+      return NextResponse.json({ error: "ファイルがありません" }, { status: 400 });
     }
 
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    const buffer = Buffer.from(fileBase64, "base64");
-    const file = new File([buffer], fileName, { type: mimeType });
-
     const transcription = await openai.audio.transcriptions.create({
       file,
       model: "whisper-1",

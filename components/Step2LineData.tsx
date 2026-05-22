@@ -24,7 +24,7 @@ export default function Step2LineData({ data, onChange, onNext, onBack }: Props)
   };
 
   const charCount = data.text.length;
-  const isLong = charCount > 30000;
+  const isLong = charCount > 100000;
 
   return (
     <div className="space-y-6">
@@ -57,8 +57,13 @@ export default function Step2LineData({ data, onChange, onNext, onBack }: Props)
         />
         <div className="flex justify-between items-center mt-1">
           <span className={`text-xs ${isLong ? "text-amber-600 font-medium" : "text-gray-400"}`}>
-            {charCount.toLocaleString()} 文字{isLong && "（3万字超のため先頭・中間・末尾を自動抜粋してAIに送信します）"}
+            {charCount.toLocaleString()} 文字
           </span>
+          {isLong && (
+            <span className="text-xs bg-amber-50 border border-amber-200 text-amber-700 rounded px-2 py-0.5">
+              10万字超のため先頭・中間・末尾を自動抜粋してAIに送信します
+            </span>
+          )}
         </div>
       </div>
 
