@@ -91,13 +91,13 @@ export default function Home() {
           <div className="flex items-center justify-center mb-10 overflow-x-auto pb-1">
             {STEPS.map((label, i) => (
               <div key={i} className="flex items-center shrink-0">
-                <div className={`flex items-center gap-1.5 ${i <= step ? "text-gray-900" : "text-gray-300"}`}>
+                <div className={`flex items-center gap-1.5 ${i <= step ? "text-blue-600" : "text-gray-400"}`}>
                   <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-colors
                     ${i < step
-                      ? "bg-gray-900 border-gray-900 text-white"
+                      ? "bg-blue-600 border-blue-600 text-white"
                       : i === step
-                        ? "border-gray-900 text-gray-900"
-                        : "border-gray-200 text-gray-300"
+                        ? "bg-blue-600 border-blue-600 text-white"
+                        : "bg-gray-200 border-gray-200 text-gray-500"
                     }`}
                   >
                     {i < step ? "✓" : i + 1}
@@ -105,7 +105,7 @@ export default function Home() {
                   <span className="text-xs font-medium hidden sm:block">{label}</span>
                 </div>
                 {i < STEPS.length - 1 && (
-                  <div className={`h-px w-6 sm:w-8 mx-2 ${i < step ? "bg-gray-900" : "bg-gray-200"}`} />
+                  <div className={`h-px w-6 sm:w-8 mx-2 ${i < step ? "bg-blue-600" : "bg-gray-200"}`} />
                 )}
               </div>
             ))}
