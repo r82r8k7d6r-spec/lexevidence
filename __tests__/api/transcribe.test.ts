@@ -18,83 +18,18 @@ vi.mock('openai', () => ({
 
 const { POST } = await import('@/app/api/transcribe/route');
 
-// FormData リクエストを作成するヘルパー
-const makeFormRequest = (file?: File) => {
-  const fd = new FormData();
-  if (file) fd.append('file', file);
-  return new NextRequest('http://localhost/api/transcribe', {
+const makeJsonRequest = (body: unknown) =>
+  new NextRequest('http://localhost/api/transcribe', {
     method: 'POST',
-    body: fd,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
   });
-};
 
-const validFile = new File(
-  [Buffer.from('dummy audio data')],
-  'test.mp3',
-  { type: 'audio/mpeg' }
-);
+const validBase64 = Buffer.from('dummy audio data').toString('base64');
 
-describe('POST /api/transcribe (busboy multipart)', () => {
+describe('POST /api/transcribe (Base64 JSON + stream reader)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
-
-  it('fileが添付されていない場合400を返す', async () => {
-    const fd = new FormData();
-    const req = new NextRequest('http://localhost/api/transcribe', {
-      method: 'POST',
-      body: fd,
-    });
-    const res = await POST(req);
-    expect(res.status).toBe(400);
-    const json = await res.json();
-    expect(json.error).toBeTruthy();
-  });
-
-  it('正常時に文字起こし結果を返す', async () => {
-    mockCreate.mockResolvedValueOnce({ text: '文字起こしテキスト' });
-
-    const res = await POST(makeFormRequest(validFile));
-
-    expect(res.status).toBe(200);
-    const json = await res.json();
-    expect(json.text).toBe('文字起こしテキスト');
-  });
-
-  it('OpenAI APIが例外を投げた場合500を返す', async () => {
-    mockCreate.mockRejectedValueOnce(new Error('API Error'));
-
-    const res = await POST(makeFormRequest(validFile));
-
-    expect(res.status).toBe(500);
-    const json = await res.json();
-    expect(json.error).toContain('API Error');
-  });
-
-  it('OpenAI SDKのcreateに正しいパラメータが渡される', async () => {
-    mockCreate.mockResolvedValueOnce({ text: 'ok' });
-
-    await POST(makeFormRequest(validFile));
-
-    expect(mockCreate).toHaveBeenCalledOnce();
-    const args = mockCreate.mock.calls[0][0];
-    expect(args.model).toBe('whisper-1');
-    expect(args.language).toBe('ja');
-    expect(args.file).toBeInstanceOf(File);
-    expect(args.file.name).toBe('test.mp3');
-    expect(args.file.type).toBe('audio/mpeg');
-  });
-
-  it('ファイルの内容が正しく渡される', async () => {
-    mockCreate.mockResolvedValueOnce({ text: 'ok' });
-
-    const content = 'real audio content';
-    const file = new File([Buffer.from(content)], 'audio.mp3', { type: 'audio/mpeg' });
-    await POST(makeFormRequest(file));
-
-    const passedFile: File = mockCreate.mock.calls[0][0].file;
-    const buf = Buffer.from(await passedFile.arrayBuffer());
-    expect(buf.toString('utf-8')).toBe(content);
   });
 
   it('bodyが空の場合400を返す', async () => {
@@ -104,5 +39,95 @@ describe('POST /api/transcribe (busboy multipart)', () => {
     });
     const res = await POST(req);
     expect(res.status).toBe(400);
+  });
+
+  it('不正なJSONの場合400を返す', async () => {
+    const req = new NextRequest('http://localhost/api/transcribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: 'not-json',
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error).toContain('JSONパースエラー');
+  });
+
+  it('fileBase64が未指定の場合400を返す', async () => {
+    const res = await POST(makeJsonRequest({ fileName: 'test.mp3', mimeType: 'audio/mpeg' }));
+    expect(res.status).toBe(400);
+  });
+
+  it('fileNameが未指定の場合400を返す', async () => {
+    const res = await POST(makeJsonRequest({ fileBase64: validBase64, mimeType: 'audio/mpeg' }));
+    expect(res.status).toBe(400);
+  });
+
+  it('mimeTypeが未指定の場合400を返す', async () => {
+    const res = await POST(makeJsonRequest({ fileBase64: validBase64, fileName: 'test.mp3' }));
+    expect(res.status).toBe(400);
+  });
+
+  it('正常時に文字起こし結果を返す', async () => {
+    mockCreate.mockResolvedValueOnce({ text: '文字起こしテキスト' });
+
+    const res = await POST(makeJsonRequest({
+      fileBase64: validBase64,
+      fileName: 'test.mp3',
+      mimeType: 'audio/mpeg',
+    }));
+
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.text).toBe('文字起こしテキスト');
+  });
+
+  it('OpenAI APIが例外を投げた場合500を返す', async () => {
+    mockCreate.mockRejectedValueOnce(new Error('API Error'));
+
+    const res = await POST(makeJsonRequest({
+      fileBase64: validBase64,
+      fileName: 'test.mp3',
+      mimeType: 'audio/mpeg',
+    }));
+
+    expect(res.status).toBe(500);
+    const json = await res.json();
+    expect(json.error).toContain('API Error');
+  });
+
+  it('OpenAI SDKに正しいパラメータが渡される', async () => {
+    mockCreate.mockResolvedValueOnce({ text: 'ok' });
+
+    await POST(makeJsonRequest({
+      fileBase64: validBase64,
+      fileName: 'audio.mp3',
+      mimeType: 'audio/mpeg',
+    }));
+
+    expect(mockCreate).toHaveBeenCalledOnce();
+    const args = mockCreate.mock.calls[0][0];
+    expect(args.model).toBe('whisper-1');
+    expect(args.language).toBe('ja');
+    expect(args.file).toBeInstanceOf(File);
+    expect(args.file.name).toBe('audio.mp3');
+    expect(args.file.type).toBe('audio/mpeg');
+  });
+
+  it('Base64が正しくBufferに変換されFileに渡される', async () => {
+    mockCreate.mockResolvedValueOnce({ text: 'ok' });
+
+    const originalData = 'test audio content';
+    const base64 = Buffer.from(originalData).toString('base64');
+
+    await POST(makeJsonRequest({
+      fileBase64: base64,
+      fileName: 'test.mp3',
+      mimeType: 'audio/mpeg',
+    }));
+
+    const file: File = mockCreate.mock.calls[0][0].file;
+    const decoded = Buffer.from(await file.arrayBuffer()).toString('utf-8');
+    expect(decoded).toBe(originalData);
   });
 });
