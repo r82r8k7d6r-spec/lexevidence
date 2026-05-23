@@ -13,18 +13,9 @@ const MAX_TOTAL_BYTES = 100 * 1024 * 1024;  // 合計100MB
 const MAX_FILE_BYTES  =  25 * 1024 * 1024;  // 1ファイル25MB（Whisper上限）
 
 async function transcribeBlob(file: File): Promise<string> {
-  const fileBase64 = await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve((reader.result as string).split(",")[1]);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-
-  const res = await fetch("/api/transcribe", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ fileBase64, fileName: file.name, mimeType: file.type }),
-  });
+  const fd = new FormData();
+  fd.append("file", file);
+  const res = await fetch("/api/transcribe", { method: "POST", body: fd });
   const json = await res.json();
   if (!res.ok) throw new Error(json.error || "文字起こし失敗");
   return json.text as string;

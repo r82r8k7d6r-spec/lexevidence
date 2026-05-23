@@ -1,51 +1,75 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
+import Busboy from "busboy";
+import { Readable } from "stream";
 
 export const runtime = "nodejs";
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
-// Next.js の組み込みパーサーをバイパスしてボディをストリームで直接読む
-async function readBodyAsText(req: NextRequest): Promise<string> {
-  const reader = req.body?.getReader();
-  if (!reader) return "";
+const MAX_FILE_BYTES = 25 * 1024 * 1024; // 25MB
 
-  const chunks: Uint8Array[] = [];
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    if (value) chunks.push(value);
-  }
+// req.formData() を使わず busboy でストリームを直接パース
+function extractFileFromRequest(req: NextRequest): Promise<File | null> {
+  return new Promise((resolve, reject) => {
+    const contentType = req.headers.get("content-type") ?? "";
 
-  const total = chunks.reduce((sum, c) => sum + c.length, 0);
-  const merged = new Uint8Array(total);
-  let offset = 0;
-  for (const chunk of chunks) {
-    merged.set(chunk, offset);
-    offset += chunk.length;
-  }
-  return new TextDecoder().decode(merged);
+    const bb = Busboy({
+      headers: { "content-type": contentType },
+      limits: { fileSize: MAX_FILE_BYTES },
+    });
+
+    let resolved = false;
+    const settle = (value: File | null) => {
+      if (!resolved) { resolved = true; resolve(value); }
+    };
+
+    bb.on("file", (_name, stream, info) => {
+      const chunks: Buffer[] = [];
+      stream.on("data", (chunk: Buffer) => chunks.push(Buffer.from(chunk)));
+      stream.on("end", () =>
+        settle(new File([Buffer.concat(chunks)], info.filename || "audio", {
+          type: info.mimeType || "audio/mpeg",
+        }))
+      );
+      stream.on("error", reject);
+    });
+
+    bb.on("finish", () => settle(null));
+    bb.on("error", reject);
+
+    if (!req.body) { resolve(null); return; }
+
+    // Web Streams API → Node.js Readable に変換してパイプ
+    const reader = req.body.getReader();
+    const readable = new Readable({
+      async read() {
+        try {
+          const { done, value } = await reader.read();
+          done ? this.push(null) : this.push(Buffer.from(value));
+        } catch (e) {
+          this.destroy(e as Error);
+        }
+      },
+    });
+    readable.pipe(bb);
+  });
 }
 
 export async function POST(req: NextRequest) {
+  const contentType = req.headers.get("content-type") ?? "";
+  if (!contentType.includes("multipart/form-data")) {
+    return NextResponse.json({ error: "ファイルがありません" }, { status: 400 });
+  }
+
   try {
-    const bodyText = await readBodyAsText(req);
+    const file = await extractFileFromRequest(req);
 
-    let fileBase64: string, fileName: string, mimeType: string;
-    try {
-      ({ fileBase64, fileName, mimeType } = JSON.parse(bodyText));
-    } catch {
-      return NextResponse.json({ error: "リクエストのパースに失敗しました" }, { status: 400 });
-    }
-
-    if (!fileBase64 || !fileName || !mimeType) {
-      return NextResponse.json({ error: "fileBase64・fileName・mimeTypeは必須です" }, { status: 400 });
+    if (!file) {
+      return NextResponse.json({ error: "ファイルがありません" }, { status: 400 });
     }
 
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    const buffer = Buffer.from(fileBase64, "base64");
-    const file = new File([buffer], fileName, { type: mimeType });
-
     const transcription = await openai.audio.transcriptions.create({
       file,
       model: "whisper-1",
