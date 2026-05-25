@@ -60,7 +60,34 @@ export default function LoginPage() {
             style={{ height: "auto" }}
           />
           <h1 className="text-2xl font-bold text-gray-900">マモリAI</h1>
-          <p className="mt-1 text-sm text-gray-400">ログイン</p>
+
+          {/* キャッチコピー */}
+          <div className="w-full mt-6 space-y-3">
+            {/* 1. メインキャッチ */}
+            <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-center">
+              <p className="text-blue-700 font-bold text-sm leading-snug">
+                スマホの中の修羅場を、<br />3分で弁護士が動く証拠資料へ
+              </p>
+            </div>
+
+            {/* 2. セキュリティ */}
+            <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex items-center gap-2">
+              <span className="text-green-600 text-lg shrink-0">🛡️</span>
+              <p className="text-green-700 text-xs leading-snug font-medium">
+                【秘密厳守】入力データは資料生成後に即時削除されます
+              </p>
+            </div>
+
+            {/* 3. 説明文 */}
+            <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-center">
+              <p className="text-gray-500 text-xs leading-relaxed">
+                LINEトーク・画像・音声を投げるだけ。<br />
+                弁護士相談の時間を半分に、慰謝料請求の一歩へ
+              </p>
+            </div>
+          </div>
+
+          <p className="mt-5 text-sm text-gray-400">ログイン</p>
         </div>
 
         {/* エラー */}
