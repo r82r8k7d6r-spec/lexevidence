@@ -7,6 +7,8 @@ interface Props {
   onChange: (data: AudioData) => void;
   onNext: () => void;
   onBack: () => void;
+  onTranscriptionAnalysisComplete?: (result: string) => void;
+  transcriptionAnalysisStatus?: 'idle' | 'analyzing' | 'done' | 'error';
 }
 
 const MAX_TOTAL_BYTES = 100 * 1024 * 1024;  // 合計100MB
@@ -30,7 +32,10 @@ async function transcribeBlob(file: File): Promise<string> {
   return json.text as string;
 }
 
-export default function Step4Audio({ data, onChange, onNext, onBack }: Props) {
+export default function Step4Audio({
+  data, onChange, onNext, onBack,
+  onTranscriptionAnalysisComplete, transcriptionAnalysisStatus = 'idle',
+}: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [transcribeStatus, setTranscribeStatus] = useState("");
@@ -80,7 +85,21 @@ export default function Step4Audio({ data, onChange, onNext, onBack }: Props) {
     }
 
     if (results.length > 0) {
-      onChange({ fileName: names, transcription: results.join("\n\n") });
+      const fullTranscription = results.join("\n\n");
+      onChange({ fileName: names, transcription: fullTranscription });
+
+      // ② 話者分離分析をバックグラウンドで実行
+      if (onTranscriptionAnalysisComplete && fullTranscription.length >= 50) {
+        onTranscriptionAnalysisComplete('__analyzing__');
+        fetch('/api/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'transcription', content: fullTranscription }),
+        })
+          .then(r => r.json())
+          .then(json => onTranscriptionAnalysisComplete(json.result ?? '__error__'))
+          .catch(() => onTranscriptionAnalysisComplete('__error__'));
+      }
     }
     setIsTranscribing(false);
     setTranscribeStatus("");
@@ -135,9 +154,20 @@ export default function Step4Audio({ data, onChange, onNext, onBack }: Props) {
           className="hidden"
           onChange={handleFiles}
         />
-        <p className="text-xs text-gray-400 mt-1">
-          ※ 25MB超・合計100MB超のファイルはアップロード不可。テキストを手動で貼り付けてください。
-        </p>
+        <div className="flex items-center justify-between mt-1 flex-wrap gap-1">
+          <p className="text-xs text-gray-400">
+            ※ 25MB超・合計100MB超のファイルはアップロード不可。
+          </p>
+          {transcriptionAnalysisStatus === 'analyzing' && (
+            <span className="text-xs bg-blue-50 border border-blue-200 text-blue-600 rounded px-2 py-0.5 flex items-center gap-1">
+              <span className="animate-spin border border-blue-400 border-t-transparent rounded-full w-3 h-3 inline-block" />
+              話者分析中...
+            </span>
+          )}
+          {transcriptionAnalysisStatus === 'done' && (
+            <span className="text-xs bg-green-50 border border-green-200 text-green-700 rounded px-2 py-0.5">✓ 話者分析完了</span>
+          )}
+        </div>
 
         {transcribeError && (
           <div className="mt-2 bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2 text-xs whitespace-pre-wrap">

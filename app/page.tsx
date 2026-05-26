@@ -31,6 +31,8 @@ const initialFormData: AppFormData = {
   audioData: { transcription: "" },
 };
 
+type AnalysisStatus = 'idle' | 'analyzing' | 'done' | 'error';
+
 export default function Home() {
   const [step, setStep] = useState(0);
   const [formData, setFormData] = useState<AppFormData>(initialFormData);
@@ -39,6 +41,12 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [price, setPrice] = useState(1980);
   const [isFirst, setIsFirst] = useState(true);
+
+  // ① LINE分析・② 音声文字起こし分析
+  const [lineAnalysis, setLineAnalysis] = useState<string | null>(null);
+  const [lineAnalysisStatus, setLineAnalysisStatus] = useState<AnalysisStatus>('idle');
+  const [transcriptionAnalysis, setTranscriptionAnalysis] = useState<string | null>(null);
+  const [transcriptionAnalysisStatus, setTranscriptionAnalysisStatus] = useState<AnalysisStatus>('idle');
 
   const next = () => setStep((s) => Math.min(s + 1, 5));
   const back = () => setStep((s) => Math.max(s - 1, 0));
@@ -139,11 +147,31 @@ export default function Home() {
     }
   };
 
+  // ①コールバック
+  const handleLineAnalysis = useCallback((result: string) => {
+    if (result === '__analyzing__') { setLineAnalysisStatus('analyzing'); return; }
+    if (result === '__error__')    { setLineAnalysisStatus('error'); return; }
+    setLineAnalysis(result);
+    setLineAnalysisStatus('done');
+  }, []);
+
+  // ②コールバック
+  const handleTranscriptionAnalysis = useCallback((result: string) => {
+    if (result === '__analyzing__') { setTranscriptionAnalysisStatus('analyzing'); return; }
+    if (result === '__error__')    { setTranscriptionAnalysisStatus('error'); return; }
+    setTranscriptionAnalysis(result);
+    setTranscriptionAnalysisStatus('done');
+  }, []);
+
   const reset = () => {
     setStep(0);
     setFormData(initialFormData);
     setReport(null);
     setError(null);
+    setLineAnalysis(null);
+    setLineAnalysisStatus('idle');
+    setTranscriptionAnalysis(null);
+    setTranscriptionAnalysisStatus('idle');
   };
 
   return (
@@ -211,6 +239,8 @@ export default function Home() {
               onChange={(lineData) => setFormData((f) => ({ ...f, lineData }))}
               onNext={next}
               onBack={back}
+              onLineAnalysisComplete={handleLineAnalysis}
+              lineAnalysisStatus={lineAnalysisStatus}
             />
           )}
           {step === 2 && (
@@ -227,6 +257,8 @@ export default function Home() {
               onChange={(audioData) => setFormData((f) => ({ ...f, audioData }))}
               onNext={next}
               onBack={back}
+              onTranscriptionAnalysisComplete={handleTranscriptionAnalysis}
+              transcriptionAnalysisStatus={transcriptionAnalysisStatus}
             />
           )}
           {step === 4 && (
@@ -240,7 +272,12 @@ export default function Home() {
             />
           )}
           {step === 5 && report && (
-            <Step6Result report={report} onReset={reset} />
+            <Step6Result
+              report={report}
+              onReset={reset}
+              lineAnalysis={lineAnalysis}
+              transcriptionAnalysis={transcriptionAnalysis}
+            />
           )}
         </div>
 
