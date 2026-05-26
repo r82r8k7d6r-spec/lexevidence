@@ -44,7 +44,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // api ルートは除外（認証チェック不要 + proxyClientMaxBodySize の制限を回避）
-    '/((?!_next/static|_next/image|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$|api(?:/.*)?).*)',
+    // api・payment ルートは除外
+    '/((?!_next/static|_next/image|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$|api(?:/.*)?|payment(?:/.*)?).*)',
   ],
 }

@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { FormData as AppFormData, GeneratedReport } from "@/types";
@@ -11,6 +11,7 @@ import Step5Confirm from "@/components/Step5Confirm";
 import Step6Result from "@/components/Step6Result";
 
 const STEPS = ["基本情報", "LINEトーク", "スクリーンショット", "音声", "確認"];
+const FORM_STORAGE_KEY = "mamori_form_data";
 
 const initialFormData: AppFormData = {
   basicInfo: {
@@ -37,26 +38,82 @@ export default function Home() {
   const [report, setReport] = useState<GeneratedReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [price, setPrice] = useState(1980);
+  const [isFirst, setIsFirst] = useState(true);
 
   const next = () => setStep((s) => Math.min(s + 1, 5));
   const back = () => setStep((s) => Math.max(s - 1, 0));
 
-  const handleSubmit = async () => {
+  // 資料生成（formData を引数で受け取れるよう拡張）
+  const handleGenerate = useCallback(async (data: AppFormData) => {
     setLoading(true);
     setError(null);
     try {
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(data),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "生成に失敗しました");
-      setReport(data.report);
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "生成に失敗しました");
+      setReport(json.report);
       setStep(5);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "エラーが発生しました");
     } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Step5 に到達したら料金情報を取得
+  useEffect(() => {
+    if (step !== 4) return;
+    fetch("/api/purchases/count")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.price) setPrice(d.price);
+        if (typeof d.isFirst === "boolean") setIsFirst(d.isFirst);
+      })
+      .catch(() => {});
+  }, [step]);
+
+  // 決済完了後のリダイレクト検出：フォームデータ復元 → 自動生成
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("paid") !== "true") return;
+
+    window.history.replaceState({}, "", "/");
+
+    const saved = localStorage.getItem(FORM_STORAGE_KEY);
+    if (!saved) return;
+
+    try {
+      const restored = JSON.parse(saved) as AppFormData;
+      localStorage.removeItem(FORM_STORAGE_KEY);
+      setFormData(restored);
+      setStep(4); // 確認ステップを見せてから自動生成
+      handleGenerate(restored);
+    } catch {
+      setError("フォームデータの復元に失敗しました。もう一度お試しください。");
+    }
+  }, [handleGenerate]);
+
+  // Stripe Checkout へリダイレクト
+  const handlePayment = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // フォームデータを localStorage に保存（Stripe リダイレクト後に復元）
+      localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(formData));
+
+      const res = await fetch("/api/checkout", { method: "POST" });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "決済の開始に失敗しました");
+
+      window.location.href = json.url;
+    } catch (e: unknown) {
+      localStorage.removeItem(FORM_STORAGE_KEY);
+      setError(e instanceof Error ? e.message : "エラーが発生しました");
       setLoading(false);
     }
   };
@@ -66,6 +123,7 @@ export default function Home() {
     setFormData(initialFormData);
     setReport(null);
     setError(null);
+    localStorage.removeItem(FORM_STORAGE_KEY);
   };
 
   return (
@@ -154,9 +212,11 @@ export default function Home() {
           {step === 4 && (
             <Step5Confirm
               formData={formData}
-              onSubmit={handleSubmit}
+              onPayment={handlePayment}
               onBack={back}
               loading={loading}
+              price={price}
+              isFirst={isFirst}
             />
           )}
           {step === 5 && report && (
