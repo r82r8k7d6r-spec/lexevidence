@@ -111,7 +111,7 @@ export async function POST(req: NextRequest) {
   "evidenceList": [
     { "type": "証拠種別", "description": "何が存在するかの記録のみ（法的評価は含めない）" }
   ],
-  "partiesInfo": "関係者の氏名・関係性・勤務先等の事実情報",
+  "partiesInfo": "・申請者：[氏名]（申請者・依頼主）\n・配偶者：[氏名]（[勤務先・年齢等]）\n・不貞相手：[氏名]（[年齢・職業・関係性等]）\n（その他関係者がいれば同様の形式で追記）",
   "rawSummary": "事案の事実のみを客観的に整理した概要（法的判断・評価は含めない）"
 }
 

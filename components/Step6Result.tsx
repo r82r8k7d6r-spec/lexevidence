@@ -22,6 +22,92 @@ function reportToText(report: GeneratedReport): string {
   return `【事案概要】\n${report.rawSummary}\n\n【関係者情報】\n${report.partiesInfo}\n\n【時系列】\n${timeline}\n\n【証拠一覧】\n${evidence}`;
 }
 
+// 関係者情報を箇条書きとしてレンダリング
+function PartiesInfo({ text }: { text: string }) {
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  return (
+    <ul className="space-y-2">
+      {lines.map((line, i) => {
+        const normalized = line.startsWith('・') ? line : `・${line}`;
+        const colonIdx = normalized.indexOf('：');
+        if (colonIdx > 0) {
+          const label = normalized.slice(0, colonIdx + 1);
+          const content = normalized.slice(colonIdx + 1).trim();
+          return (
+            <li key={i} className="flex gap-2 text-sm leading-relaxed">
+              <span className="font-semibold text-gray-900 whitespace-nowrap shrink-0">{label}</span>
+              <span className="text-gray-700">{content}</span>
+            </li>
+          );
+        }
+        return (
+          <li key={i} className="text-sm text-gray-700 leading-relaxed">{normalized}</li>
+        );
+      })}
+    </ul>
+  );
+}
+
+// integratedDoc のマークダウン風テキストを HTML に変換
+function IntegratedDoc({ text }: { text: string }) {
+  const lines = text.split('\n');
+  const elements: React.ReactNode[] = [];
+  let listBuffer: string[] = [];
+
+  const flushList = (key: string) => {
+    if (listBuffer.length === 0) return;
+    elements.push(
+      <ul key={key} className="space-y-1 ml-2 mb-3">
+        {listBuffer.map((item, j) => (
+          <li key={j} className="flex gap-2 text-sm text-gray-700 leading-relaxed">
+            <span className="shrink-0 text-gray-400">・</span>
+            <span>{item.replace(/^[・\-]\s*/, '')}</span>
+          </li>
+        ))}
+      </ul>
+    );
+    listBuffer = [];
+  };
+
+  lines.forEach((line, i) => {
+    const isBullet = /^[・\-]\s/.test(line) || line.startsWith('・');
+    if (isBullet) {
+      listBuffer.push(line);
+      return;
+    }
+    flushList(`list-${i}`);
+
+    if (line.startsWith('# ')) {
+      elements.push(
+        <h1 key={i} className="text-xl font-bold text-gray-900 mt-6 mb-3 pb-2 border-b-2 border-gray-400 print:mt-4">
+          {line.slice(2)}
+        </h1>
+      );
+    } else if (line.startsWith('## ')) {
+      elements.push(
+        <h2 key={i} className="text-base font-bold text-gray-800 mt-5 mb-2 pb-1 border-b border-gray-300 print:mt-3">
+          {line.slice(3)}
+        </h2>
+      );
+    } else if (line.startsWith('### ')) {
+      elements.push(
+        <h3 key={i} className="text-sm font-semibold text-gray-800 mt-4 mb-1">
+          {line.slice(4)}
+        </h3>
+      );
+    } else if (line.trim() === '') {
+      elements.push(<div key={i} className="h-2" />);
+    } else {
+      elements.push(
+        <p key={i} className="text-sm text-gray-700 leading-relaxed mb-1">{line}</p>
+      );
+    }
+  });
+  flushList('list-end');
+
+  return <div className="space-y-0">{elements}</div>;
+}
+
 export default function Step6Result({ report, onReset, lineAnalysis, transcriptionAnalysis }: Props) {
   const printRef = useRef<HTMLDivElement>(null);
   const [integratedDoc, setIntegratedDoc] = useState<string | null>(null);
@@ -32,7 +118,6 @@ export default function Step6Result({ report, onReset, lineAnalysis, transcripti
                       !!(transcriptionAnalysis && transcriptionAnalysis !== '__error__');
 
   const handlePrint = async () => {
-    // ①②の分析結果がある場合は③統合プロンプトを実行してからPDF出力
     if (hasAnalysis && !integratedDoc) {
       setIsIntegrating(true);
       setIntegrateError('');
@@ -100,9 +185,9 @@ export default function Step6Result({ report, onReset, lineAnalysis, transcripti
       )}
 
       {/* 印刷対象コンテンツ */}
-      <div ref={printRef} className="space-y-6">
+      <div ref={printRef} className="space-y-6 print-content">
         <h1 className="text-2xl font-bold text-center text-gray-900 py-2 no-print">証拠整理資料</h1>
-        <div className="hidden print:block text-center text-xl font-bold py-2 border-b border-gray-400 mb-4">
+        <div className="hidden print:block text-center text-xl font-bold py-3 border-b-2 border-gray-600 mb-6">
           証拠整理資料
         </div>
 
@@ -110,60 +195,64 @@ export default function Step6Result({ report, onReset, lineAnalysis, transcripti
           {DISCLAIMER}
         </div>
 
-        {/* ③統合済み資料（PDF出力時）またはデフォルト表示 */}
+        {/* ③統合済み資料（PDF出力時）*/}
         {integratedDoc ? (
-          <div className="bg-white border border-gray-200 rounded-lg p-6 text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
-            {integratedDoc}
+          <div className="bg-white border border-gray-200 rounded-lg p-6">
+            <IntegratedDoc text={integratedDoc} />
           </div>
         ) : (
           <>
-            <section className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            {/* 事案概要 */}
+            <section className="bg-blue-50 border border-blue-200 rounded-lg p-4 break-inside-avoid">
               <h2 className="font-bold text-blue-900 text-lg mb-2">事案概要（事実のみ）</h2>
-              <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">{report.rawSummary}</p>
+              <p className="text-gray-700 text-sm leading-loose whitespace-pre-wrap">{report.rawSummary}</p>
             </section>
 
+            {/* 関係者情報 */}
             {report.partiesInfo && (
-              <section>
-                <h2 className="font-bold text-gray-800 text-lg border-b border-gray-300 pb-1 mb-3">関係者情報</h2>
-                <div className="bg-white border border-gray-200 rounded-lg p-4 text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-                  {report.partiesInfo}
+              <section className="break-inside-avoid">
+                <h2 className="font-bold text-gray-800 text-lg border-b-2 border-gray-300 pb-1 mb-3">
+                  関係者情報
+                </h2>
+                <div className="bg-white border border-gray-200 rounded-lg p-4">
+                  <PartiesInfo text={report.partiesInfo} />
                 </div>
               </section>
             )}
 
-            <section>
-              <h2 className="font-bold text-gray-800 text-lg border-b border-gray-300 pb-1 mb-3">時系列（事実記録）</h2>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
-                  <thead className="bg-gray-100">
-                    <tr>
-                      <th className="px-3 py-2 text-left text-gray-700 w-32">日付</th>
-                      <th className="px-3 py-2 text-left text-gray-700">出来事</th>
-                      <th className="px-3 py-2 text-left text-gray-700 w-32">証拠種別</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {report.timeline.map((item, i) => (
-                      <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                        <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{item.date}</td>
-                        <td className="px-3 py-2 text-gray-800">{item.event}</td>
-                        <td className="px-3 py-2 text-gray-500 text-xs">{item.source}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            {/* 時系列 */}
+            <section className="break-inside-avoid">
+              <h2 className="font-bold text-gray-800 text-lg border-b-2 border-gray-300 pb-1 mb-3">
+                時系列（事実記録）
+              </h2>
+              <div className="space-y-2">
+                {report.timeline.map((item, i) => (
+                  <div key={i} className="flex gap-3 border border-gray-200 rounded-lg px-4 py-3 bg-white break-inside-avoid">
+                    <div className="shrink-0 text-xs font-mono text-gray-500 pt-0.5 w-24">{item.date}</div>
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-800 leading-relaxed">{item.event}</p>
+                    </div>
+                    <div className="shrink-0">
+                      <span className="text-xs bg-gray-100 text-gray-600 rounded px-2 py-0.5 whitespace-nowrap">{item.source}</span>
+                    </div>
+                  </div>
+                ))}
               </div>
             </section>
 
+            {/* 証拠一覧 */}
             <section>
-              <h2 className="font-bold text-gray-800 text-lg border-b border-gray-300 pb-1 mb-3">証拠一覧（存在記録）</h2>
-              <div className="space-y-2">
+              <h2 className="font-bold text-gray-800 text-lg border-b-2 border-gray-300 pb-1 mb-3">
+                証拠一覧（存在記録）
+              </h2>
+              <div className="space-y-3">
                 {report.evidenceList.map((ev, i) => (
-                  <div key={i} className="bg-white border border-gray-200 rounded-lg p-3 text-sm">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded">{ev.type}</span>
+                  <div key={i} className="bg-white border border-gray-200 rounded-lg p-4 break-inside-avoid">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs font-bold text-white bg-blue-600 px-2.5 py-1 rounded">{i + 1}</span>
+                      <span className="text-sm font-semibold text-gray-800">{ev.type}</span>
                     </div>
-                    <p className="text-gray-700">{ev.description}</p>
+                    <p className="text-sm text-gray-700 leading-relaxed pl-1">{ev.description}</p>
                   </div>
                 ))}
               </div>
