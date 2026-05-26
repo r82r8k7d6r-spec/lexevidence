@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
 
-// 大容量ボディ（スクリーンショットbase64）をストリームで直接読む
+const BUCKET = 'form-sessions';
+
+// 大容量ボディをストリームで直接読む（PostgREST のサイズ制限を回避）
 async function readBodyAsText(req: NextRequest): Promise<string> {
   const reader = req.body?.getReader();
   if (!reader) return '';
@@ -20,7 +23,7 @@ async function readBodyAsText(req: NextRequest): Promise<string> {
   return new TextDecoder().decode(merged);
 }
 
-// POST: フォームデータを一時保存し、セッションIDを返す
+// POST: フォームデータを Supabase Storage に保存し、セッション ID を返す
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient();
@@ -34,23 +37,48 @@ export async function POST(req: NextRequest) {
     } catch {
       return NextResponse.json({ error: 'JSONパースエラー' }, { status: 400 });
     }
+    if (!formData) return NextResponse.json({ error: 'formData は必須です' }, { status: 400 });
 
-    if (!formData) {
-      return NextResponse.json({ error: 'formData は必須です' }, { status: 400 });
-    }
+    // UUID を生成して Storage パスを決定
+    const sessionId = crypto.randomUUID();
+    const storagePath = `${user.id}/${sessionId}.json`;
+    const fileContent = Buffer.from(JSON.stringify(formData), 'utf-8');
 
-    const { data, error } = await supabase
-      .from('form_sessions')
-      .insert({ user_id: user.id, form_data: formData })
-      .select('id')
-      .single();
+    // Service Role Key で Storage に直接アップロード（RLS をバイパスして確実に保存）
+    const admin = createAdminClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    );
 
-    if (error) {
-      console.error('form_sessions insert error:', error);
+    // バケットが存在しない場合は作成
+    await admin.storage.createBucket(BUCKET, {
+      public: false,
+      fileSizeLimit: 209715200,
+      allowedMimeTypes: ['application/json'],
+    }).catch(() => {}); // 既存の場合はエラーを無視
+
+    const { error: uploadError } = await admin.storage
+      .from(BUCKET)
+      .upload(storagePath, fileContent, {
+        contentType: 'application/json',
+        upsert: false,
+      });
+
+    if (uploadError) {
+      console.error('Storage upload error:', uploadError);
       return NextResponse.json({ error: 'フォームデータの保存に失敗しました' }, { status: 500 });
     }
 
-    return NextResponse.json({ formSessionId: data.id });
+    // メタデータをテーブルに保存（storage_path のみ、実データは Storage に）
+    // テーブルが未作成でも処理は続行する
+    const { error: metaError } = await supabase.from('form_sessions').insert({
+      id:           sessionId,
+      user_id:      user.id,
+      storage_path: storagePath,
+    });
+    if (metaError) console.warn('form_sessions metadata insert skipped:', metaError.message);
+
+    return NextResponse.json({ formSessionId: sessionId });
   } catch (err) {
     console.error('form-sessions POST error:', err);
     return NextResponse.json({ error: 'サーバーエラー' }, { status: 500 });

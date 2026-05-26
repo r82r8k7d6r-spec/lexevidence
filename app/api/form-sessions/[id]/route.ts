@@ -1,9 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
 
-// GET: フォームデータを取得
+const BUCKET = 'form-sessions';
+
+function adminClient() {
+  return createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
+}
+
+// Storage パスを組み立て（user_id スコープで他ユーザーから保護）
+function storagePath(userId: string, sessionId: string) {
+  return `${userId}/${sessionId}.json`;
+}
+
+// GET: Supabase Storage からフォームデータを取得
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -14,22 +29,19 @@ export async function GET(
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
 
-    const { data, error } = await supabase
-      .from('form_sessions')
-      .select('form_data, expires_at')
-      .eq('id', id)
-      .eq('user_id', user.id)
-      .single();
+    const path = storagePath(user.id, id);
+    const admin = adminClient();
 
+    const { data, error } = await admin.storage.from(BUCKET).download(path);
     if (error || !data) {
+      console.error('Storage download error:', error);
       return NextResponse.json({ error: 'フォームデータが見つかりません' }, { status: 404 });
     }
 
-    if (new Date(data.expires_at) < new Date()) {
-      return NextResponse.json({ error: 'フォームデータの有効期限が切れています' }, { status: 410 });
-    }
+    const text = await data.text();
+    const formData = JSON.parse(text);
 
-    return NextResponse.json({ formData: data.form_data });
+    return NextResponse.json({ formData });
   } catch (err) {
     console.error('form-sessions GET error:', err);
     return NextResponse.json({ error: 'サーバーエラー' }, { status: 500 });
@@ -47,11 +59,14 @@ export async function DELETE(
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
 
-    await supabase
-      .from('form_sessions')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', user.id);
+    const path = storagePath(user.id, id);
+    const admin = adminClient();
+
+    // Storage からファイルを削除
+    await admin.storage.from(BUCKET).remove([path]);
+
+    // メタデータテーブルからも削除
+    await supabase.from('form_sessions').delete().eq('id', id).eq('user_id', user.id);
 
     return NextResponse.json({ deleted: true });
   } catch (err) {
