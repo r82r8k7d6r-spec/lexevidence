@@ -11,7 +11,6 @@ import Step5Confirm from "@/components/Step5Confirm";
 import Step6Result from "@/components/Step6Result";
 
 const STEPS = ["基本情報", "LINEトーク", "スクリーンショット", "音声", "確認"];
-const FORM_STORAGE_KEY = "mamori_form_data";
 
 const initialFormData: AppFormData = {
   basicInfo: {
@@ -44,8 +43,8 @@ export default function Home() {
   const next = () => setStep((s) => Math.min(s + 1, 5));
   const back = () => setStep((s) => Math.max(s - 1, 0));
 
-  // 資料生成（formData を引数で受け取れるよう拡張）
-  const handleGenerate = useCallback(async (data: AppFormData) => {
+  // 資料生成（生成後に form_session を削除）
+  const handleGenerate = useCallback(async (data: AppFormData, formSessionId?: string) => {
     setLoading(true);
     setError(null);
     try {
@@ -58,6 +57,10 @@ export default function Home() {
       if (!res.ok) throw new Error(json.error || "生成に失敗しました");
       setReport(json.report);
       setStep(5);
+      // 生成完了後にフォームデータを削除
+      if (formSessionId) {
+        fetch(`/api/form-sessions/${formSessionId}`, { method: "DELETE" }).catch(() => {});
+      }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "エラーが発生しました");
     } finally {
@@ -77,25 +80,33 @@ export default function Home() {
       .catch(() => {});
   }, [step]);
 
-  // 決済完了後のリダイレクト検出：フォームデータ復元 → 自動生成
+  // 決済完了後のリダイレクト検出：Supabase からフォームデータを取得 → 自動生成
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("paid") !== "true") return;
 
+    const formSessionId = params.get("form_session");
     window.history.replaceState({}, "", "/");
 
-    const saved = localStorage.getItem(FORM_STORAGE_KEY);
-    if (!saved) return;
-
-    try {
-      const restored = JSON.parse(saved) as AppFormData;
-      localStorage.removeItem(FORM_STORAGE_KEY);
-      setFormData(restored);
-      setStep(4); // 確認ステップを見せてから自動生成
-      handleGenerate(restored);
-    } catch {
-      setError("フォームデータの復元に失敗しました。もう一度お試しください。");
+    if (!formSessionId) {
+      setError("フォームデータが見つかりません。もう一度最初からお試しください。");
+      return;
     }
+
+    setLoading(true);
+    fetch(`/api/form-sessions/${formSessionId}`)
+      .then(async (r) => {
+        const json = await r.json();
+        if (!r.ok) throw new Error(json.error || "フォームデータの取得に失敗しました");
+        const restored = json.formData as AppFormData;
+        setFormData(restored);
+        setStep(4);
+        handleGenerate(restored, formSessionId);
+      })
+      .catch((e: unknown) => {
+        setLoading(false);
+        setError(e instanceof Error ? e.message : "フォームデータの復元に失敗しました");
+      });
   }, [handleGenerate]);
 
   // Stripe Checkout へリダイレクト
@@ -103,16 +114,26 @@ export default function Home() {
     setLoading(true);
     setError(null);
     try {
-      // フォームデータを localStorage に保存（Stripe リダイレクト後に復元）
-      localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(formData));
+      // フォームデータを Supabase に一時保存
+      const sessionRes = await fetch("/api/form-sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ formData }),
+      });
+      const sessionJson = await sessionRes.json();
+      if (!sessionRes.ok) throw new Error(sessionJson.error || "フォームデータの保存に失敗しました");
 
-      const res = await fetch("/api/checkout", { method: "POST" });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "決済の開始に失敗しました");
+      // Stripe Checkout セッション作成（formSessionId をメタデータに含める）
+      const checkoutRes = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ formSessionId: sessionJson.formSessionId }),
+      });
+      const checkoutJson = await checkoutRes.json();
+      if (!checkoutRes.ok) throw new Error(checkoutJson.error || "決済の開始に失敗しました");
 
-      window.location.href = json.url;
+      window.location.href = checkoutJson.url;
     } catch (e: unknown) {
-      localStorage.removeItem(FORM_STORAGE_KEY);
       setError(e instanceof Error ? e.message : "エラーが発生しました");
       setLoading(false);
     }
@@ -123,7 +144,6 @@ export default function Home() {
     setFormData(initialFormData);
     setReport(null);
     setError(null);
-    localStorage.removeItem(FORM_STORAGE_KEY);
   };
 
   return (

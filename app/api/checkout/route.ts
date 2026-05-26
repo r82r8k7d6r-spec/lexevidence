@@ -5,13 +5,16 @@ import { stripe, PRICE_FIRST, PRICE_REPEAT } from '@/lib/stripe';
 
 export const dynamic = 'force-dynamic';
 
-export async function POST(_req: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
 
-    if (!user) {
-      return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
+    // formSessionId を受け取る
+    const { formSessionId } = await req.json().catch(() => ({})) as { formSessionId?: string };
+    if (!formSessionId) {
+      return NextResponse.json({ error: 'formSessionId は必須です' }, { status: 400 });
     }
 
     // 完了済み購入件数で初回/2回目以降を判定
@@ -43,19 +46,22 @@ export async function POST(_req: NextRequest) {
       customer_email: user.email ?? undefined,
       success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url:  `${process.env.NEXT_PUBLIC_SITE_URL}/payment/cancel`,
-      metadata: { user_id: user.id },
+      metadata: {
+        user_id: user.id,
+        form_session_id: formSessionId, // フォームデータ取得に使用
+      },
     });
 
-    // 保留レコードを挿入（Service Role Key を使用）
+    // 保留レコードを挿入
     const admin = createAdminClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
     );
     await admin.from('purchases').insert({
-      user_id:          user.id,
+      user_id:           user.id,
       stripe_session_id: session.id,
-      amount_jpy:       amountJpy,
-      status:           'pending',
+      amount_jpy:        amountJpy,
+      status:            'pending',
     });
 
     return NextResponse.json({ url: session.url, amountJpy, isFirst });

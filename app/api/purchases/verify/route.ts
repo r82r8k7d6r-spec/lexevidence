@@ -18,6 +18,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
     }
 
+    // Stripe セッションを取得（formSessionId のために常に呼ぶ）
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    const formSessionId = session.metadata?.form_session_id ?? null;
+
     // DB に完了レコードがあればそのまま返す（Webhook 処理済み）
     const { data: existing } = await supabase
       .from('purchases')
@@ -27,16 +31,15 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (existing?.status === 'completed') {
-      return NextResponse.json({ verified: true, amountJpy: existing.amount_jpy });
+      return NextResponse.json({ verified: true, amountJpy: existing.amount_jpy, formSessionId });
     }
 
-    // Stripe に直接確認（Webhook より先に成功ページが来た場合の対応）
-    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    // Stripe で決済完了確認
     if (session.payment_status !== 'paid') {
       return NextResponse.json({ verified: false, error: '決済が完了していません' }, { status: 402 });
     }
 
-    // DB を更新
+    // DB を更新（Webhook より先に成功ページが来た場合の対応）
     const admin = createAdminClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -50,7 +53,7 @@ export async function POST(req: NextRequest) {
       completed_at:             new Date().toISOString(),
     }, { onConflict: 'stripe_session_id' });
 
-    return NextResponse.json({ verified: true, amountJpy: session.amount_total });
+    return NextResponse.json({ verified: true, amountJpy: session.amount_total, formSessionId });
   } catch (error) {
     console.error('Verify error:', error);
     return NextResponse.json({ error: '検証に失敗しました' }, { status: 500 });

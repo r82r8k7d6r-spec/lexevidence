@@ -26,7 +26,8 @@ function SuccessContent() {
         if (res.ok && json.verified) {
           setStatus('success');
           setTimeout(() => {
-            router.push(`/?paid=true&session=${sessionId}`);
+            const formSession = json.formSessionId ? `&form_session=${json.formSessionId}` : '';
+            router.push(`/?paid=true${formSession}`);
           }, 2000);
         } else {
           setStatus('error');
