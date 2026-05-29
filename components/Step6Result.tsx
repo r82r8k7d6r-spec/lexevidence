@@ -1,6 +1,15 @@
 "use client";
 import { useRef, useState } from "react";
 import { GeneratedReport } from "@/types";
+import { VideoPattern } from "@/app/api/generate-video/route";
+
+const PATTERN_LABELS: Record<VideoPattern, { label: string; emoji: string }> = {
+  emotional:    { label: '感情訴求型',         emoji: '😢' },
+  testimonial:  { label: '体験談型',           emoji: '💬' },
+  beforeafter:  { label: 'ビフォーアフター型', emoji: '✨' },
+  ai:           { label: 'AI技術驚き型',       emoji: '🤖' },
+  consultation: { label: '弁護士相談準備型',   emoji: '⚖️' },
+};
 
 interface Props {
   report: GeneratedReport;
@@ -116,6 +125,58 @@ export default function Step6Result({ report, onReset, lineAnalysis, transcripti
 
   const hasAnalysis = !!(lineAnalysis && lineAnalysis !== '__error__') ||
                       !!(transcriptionAnalysis && transcriptionAnalysis !== '__error__');
+
+  const [videoPattern, setVideoPattern] = useState<VideoPattern>('emotional');
+  const [videoState, setVideoState] = useState<'idle' | 'generating' | 'done' | 'error'>('idle');
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [videoError, setVideoError] = useState('');
+
+  const handleGenerateVideo = async () => {
+    setVideoState('generating');
+    setVideoError('');
+    setVideoUrl(null);
+
+    try {
+      const res = await fetch('/api/generate-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ report, pattern: videoPattern }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || '動画生成に失敗しました');
+
+      const { renderId, status, url } = json;
+      if (status === 'succeeded' && url) {
+        setVideoUrl(url);
+        setVideoState('done');
+        return;
+      }
+
+      const poll = async () => {
+        try {
+          const pollRes = await fetch(`/api/generate-video?id=${renderId}`);
+          const pollJson = await pollRes.json();
+          if (!pollRes.ok) throw new Error(pollJson.error || 'ポーリングに失敗しました');
+
+          if (pollJson.status === 'succeeded' && pollJson.url) {
+            setVideoUrl(pollJson.url);
+            setVideoState('done');
+          } else if (pollJson.status === 'failed') {
+            throw new Error('動画のレンダリングが失敗しました');
+          } else {
+            setTimeout(poll, 3000);
+          }
+        } catch (e: unknown) {
+          setVideoError(e instanceof Error ? e.message : 'ポーリングエラー');
+          setVideoState('error');
+        }
+      };
+      setTimeout(poll, 3000);
+    } catch (e: unknown) {
+      setVideoError(e instanceof Error ? e.message : '動画生成に失敗しました');
+      setVideoState('error');
+    }
+  };
 
   const handlePrint = async () => {
     if (hasAnalysis && !integratedDoc) {
@@ -263,6 +324,76 @@ export default function Step6Result({ report, onReset, lineAnalysis, transcripti
         <div className="bg-yellow-50 border border-yellow-300 rounded-lg px-4 py-3 text-sm text-yellow-900 font-medium">
           {DISCLAIMER}
         </div>
+      </div>
+
+      {/* ショート動画生成セクション（印刷時は非表示） */}
+      <div className="no-print border-t border-gray-200 pt-6 mt-2">
+        <h3 className="text-lg font-bold text-gray-800 mb-1">🎬 ショート動画を生成する</h3>
+        <p className="text-xs text-gray-500 mb-4">
+          証拠整理結果をもとに TikTok / YouTube Shorts 用の縦型動画を自動生成します（Creatomate）。
+        </p>
+
+        {/* パターン選択 */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-4">
+          {(Object.entries(PATTERN_LABELS) as [VideoPattern, { label: string; emoji: string }][]).map(
+            ([key, { label, emoji }]) => (
+              <button
+                key={key}
+                onClick={() => setVideoPattern(key)}
+                className={`text-xs px-3 py-2.5 rounded-lg border transition text-center leading-tight ${
+                  videoPattern === key
+                    ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
+                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                <span className="text-base block mb-1">{emoji}</span>
+                {label}
+              </button>
+            )
+          )}
+        </div>
+
+        <button
+          onClick={handleGenerateVideo}
+          disabled={videoState === 'generating'}
+          className="bg-purple-600 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-purple-700 transition disabled:opacity-50 flex items-center gap-2"
+        >
+          {videoState === 'generating' ? (
+            <>
+              <span className="animate-spin border-2 border-white border-t-transparent rounded-full w-4 h-4" />
+              動画生成中（1〜2分かかります）...
+            </>
+          ) : (
+            '🎬 この内容で動画を生成する'
+          )}
+        </button>
+
+        {videoState === 'error' && (
+          <div className="mt-3 bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">
+            {videoError}
+          </div>
+        )}
+
+        {videoState === 'done' && videoUrl && (
+          <div className="mt-5 space-y-3">
+            <video
+              src={videoUrl}
+              controls
+              playsInline
+              className="rounded-xl shadow-lg mx-auto block"
+              style={{ maxWidth: '280px', aspectRatio: '9/16' }}
+            />
+            <div className="flex justify-center">
+              <a
+                href={videoUrl}
+                download="mamori-short.mp4"
+                className="bg-green-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition"
+              >
+                ⬇ 動画をダウンロード
+              </a>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
