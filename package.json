@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "generate-video": "node scripts/generate-video.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.97.1",
