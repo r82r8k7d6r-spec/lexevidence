@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
-import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 import { createClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
@@ -61,43 +60,64 @@ ${reportSummary}
 - 見出しは大きく、段落は短く読みやすくする`;
 }
 
-// ── LINE解析：Gemini 1.5 Pro ──────────────────────────────────
+// ── LINE解析：Gemini 1.5 Pro（REST API 直接呼び出し・SDK 不使用）──
 
 async function analyzeWithGemini(systemPrompt: string, userContent: string): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error('GEMINI_API_KEY が環境変数に設定されていません');
 
-  const genAI = new GoogleGenerativeAI(apiKey);
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${apiKey}`;
 
-  // 法的証拠整理ツールのため、セーフティフィルターを緩和（BLOCK_ONLY_HIGH）
-  const safetySettings = [
-    { category: HarmCategory.HARM_CATEGORY_HARASSMENT,       threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
-    { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,      threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
-    { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
-    { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
-  ];
+  const body = {
+    system_instruction: {
+      parts: [{ text: systemPrompt }],
+    },
+    contents: [
+      { role: 'user', parts: [{ text: userContent }] },
+    ],
+    safetySettings: [
+      { category: 'HARM_CATEGORY_HARASSMENT',        threshold: 'BLOCK_ONLY_HIGH' },
+      { category: 'HARM_CATEGORY_HATE_SPEECH',       threshold: 'BLOCK_ONLY_HIGH' },
+      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
+      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
+    ],
+    generationConfig: {
+      maxOutputTokens: 4096,
+      temperature: 0.2,
+    },
+  };
 
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-1.5-pro',
-    systemInstruction: systemPrompt,
-    safetySettings,
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
   });
 
-  const response = await model.generateContent(userContent);
-
-  // ブロックされた場合の確認
-  const candidate = response.response.candidates?.[0];
-  if (!candidate) {
-    const feedback = response.response.promptFeedback;
-    const reason = feedback?.blockReason ?? 'UNKNOWN';
-    throw new Error(`Gemini がコンテンツをブロックしました（理由: ${reason}）`);
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '(レスポンス取得失敗)');
+    throw new Error(`Gemini API エラー ${res.status}: ${errText.slice(0, 300)}`);
   }
 
+  const json = await res.json() as {
+    candidates?: Array<{
+      content?: { parts?: Array<{ text?: string }> };
+      finishReason?: string;
+    }>;
+    promptFeedback?: { blockReason?: string };
+  };
+
+  const candidate = json.candidates?.[0];
+  if (!candidate) {
+    const reason = json.promptFeedback?.blockReason ?? 'UNKNOWN';
+    throw new Error(`Gemini がコンテンツをブロックしました（理由: ${reason}）`);
+  }
   if (candidate.finishReason === 'SAFETY') {
     throw new Error('Gemini がセーフティフィルターによりブロックしました');
   }
 
-  return response.response.text();
+  const text = candidate.content?.parts?.[0]?.text ?? '';
+  if (!text) throw new Error('Gemini が空のレスポンスを返しました');
+  return text;
 }
 
 // ── 音声・統合：Claude ────────────────────────────────────────
@@ -140,12 +160,15 @@ export async function POST(req: NextRequest) {
       if (!content) return NextResponse.json({ error: 'content は必須です' }, { status: 400 });
       const userContent = content.slice(0, 30000);
 
-      // Gemini で解析、失敗時は Claude にフォールバック
+      // Gemini REST API で解析。失敗時は Claude にフォールバック
       try {
         result = await analyzeWithGemini(LINE_SYSTEM, userContent);
+        console.log('Gemini LINE解析成功');
       } catch (geminiErr) {
-        console.warn('Gemini LINE解析失敗、Claudeにフォールバック:', geminiErr instanceof Error ? geminiErr.message : geminiErr);
+        const geminiMsg = geminiErr instanceof Error ? geminiErr.message : String(geminiErr);
+        console.warn('Gemini LINE解析失敗→Claudeにフォールバック:', geminiMsg);
         result = await analyzeWithClaude(LINE_SYSTEM, userContent);
+        console.log('Claude フォールバック成功');
       }
 
     } else if (type === 'transcription') {
