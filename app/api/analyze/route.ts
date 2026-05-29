@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 import { createClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
@@ -65,16 +65,39 @@ ${reportSummary}
 
 async function analyzeWithGemini(systemPrompt: string, userContent: string): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error('GEMINI_API_KEY が設定されていません');
+  if (!apiKey) throw new Error('GEMINI_API_KEY が環境変数に設定されていません');
 
   const genAI = new GoogleGenerativeAI(apiKey);
+
+  // 法的証拠整理ツールのため、セーフティフィルターを緩和（BLOCK_ONLY_HIGH）
+  const safetySettings = [
+    { category: HarmCategory.HARM_CATEGORY_HARASSMENT,       threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
+    { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,      threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
+    { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
+    { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
+  ];
+
   const model = genAI.getGenerativeModel({
     model: 'gemini-1.5-pro',
     systemInstruction: systemPrompt,
+    safetySettings,
   });
 
-  const result = await model.generateContent(userContent);
-  return result.response.text();
+  const response = await model.generateContent(userContent);
+
+  // ブロックされた場合の確認
+  const candidate = response.response.candidates?.[0];
+  if (!candidate) {
+    const feedback = response.response.promptFeedback;
+    const reason = feedback?.blockReason ?? 'UNKNOWN';
+    throw new Error(`Gemini がコンテンツをブロックしました（理由: ${reason}）`);
+  }
+
+  if (candidate.finishReason === 'SAFETY') {
+    throw new Error('Gemini がセーフティフィルターによりブロックしました');
+  }
+
+  return response.response.text();
 }
 
 // ── 音声・統合：Claude ────────────────────────────────────────
@@ -114,18 +137,22 @@ export async function POST(req: NextRequest) {
     let result: string;
 
     if (type === 'line') {
-      // LINE解析は Gemini 1.5 Pro を使用
       if (!content) return NextResponse.json({ error: 'content は必須です' }, { status: 400 });
-      const userContent = content.slice(0, 30000); // 先頭30,000字に制限
-      result = await analyzeWithGemini(LINE_SYSTEM, userContent);
+      const userContent = content.slice(0, 30000);
+
+      // Gemini で解析、失敗時は Claude にフォールバック
+      try {
+        result = await analyzeWithGemini(LINE_SYSTEM, userContent);
+      } catch (geminiErr) {
+        console.warn('Gemini LINE解析失敗、Claudeにフォールバック:', geminiErr instanceof Error ? geminiErr.message : geminiErr);
+        result = await analyzeWithClaude(LINE_SYSTEM, userContent);
+      }
 
     } else if (type === 'transcription') {
-      // 話者分離は Claude を使用
       if (!content) return NextResponse.json({ error: 'content は必須です' }, { status: 400 });
       result = await analyzeWithClaude(TRANSCRIPTION_SYSTEM, content.slice(0, 20000));
 
     } else if (type === 'integrate') {
-      // 統合資料生成は Claude を使用
       const systemPrompt = buildIntegrateSystem(
         lineAnalysis ?? '',
         transcriptionAnalysis ?? '',
