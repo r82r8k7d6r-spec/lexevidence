@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
@@ -60,6 +61,39 @@ ${reportSummary}
 - 見出しは大きく、段落は短く読みやすくする`;
 }
 
+// ── LINE解析：Gemini 1.5 Pro ──────────────────────────────────
+
+async function analyzeWithGemini(systemPrompt: string, userContent: string): Promise<string> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error('GEMINI_API_KEY が設定されていません');
+
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-1.5-pro',
+    systemInstruction: systemPrompt,
+  });
+
+  const result = await model.generateContent(userContent);
+  return result.response.text();
+}
+
+// ── 音声・統合：Claude ────────────────────────────────────────
+
+async function analyzeWithClaude(systemPrompt: string, userContent: string): Promise<string> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error('ANTHROPIC_API_KEY が設定されていません');
+
+  const client = new Anthropic({ apiKey });
+  const response = await client.messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 4096,
+    system: systemPrompt,
+    messages: [{ role: 'user', content: userContent }],
+  });
+
+  return response.content[0].type === 'text' ? response.content[0].text : '';
+}
+
 // ── ハンドラー ────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
@@ -67,9 +101,6 @@ export async function POST(req: NextRequest) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
-
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) return NextResponse.json({ error: 'API Key が設定されていません' }, { status: 500 });
 
     const body = await req.json();
     const { type, content, lineAnalysis, transcriptionAnalysis, reportSummary } = body as {
@@ -80,38 +111,32 @@ export async function POST(req: NextRequest) {
       reportSummary?: string;
     };
 
-    const client = new Anthropic({ apiKey });
-    let systemPrompt: string;
-    let userContent: string;
+    let result: string;
 
     if (type === 'line') {
+      // LINE解析は Gemini 1.5 Pro を使用
       if (!content) return NextResponse.json({ error: 'content は必須です' }, { status: 400 });
-      systemPrompt = LINE_SYSTEM;
-      // 長大テキストは先頭30,000字に制限（分析精度を優先）
-      userContent = content.slice(0, 30000);
+      const userContent = content.slice(0, 30000); // 先頭30,000字に制限
+      result = await analyzeWithGemini(LINE_SYSTEM, userContent);
+
     } else if (type === 'transcription') {
+      // 話者分離は Claude を使用
       if (!content) return NextResponse.json({ error: 'content は必須です' }, { status: 400 });
-      systemPrompt = TRANSCRIPTION_SYSTEM;
-      userContent = content.slice(0, 20000);
+      result = await analyzeWithClaude(TRANSCRIPTION_SYSTEM, content.slice(0, 20000));
+
     } else if (type === 'integrate') {
-      systemPrompt = buildIntegrateSystem(
+      // 統合資料生成は Claude を使用
+      const systemPrompt = buildIntegrateSystem(
         lineAnalysis ?? '',
         transcriptionAnalysis ?? '',
         reportSummary ?? '',
       );
-      userContent = '上記の素材を統合した証拠整理資料を作成してください。';
+      result = await analyzeWithClaude(systemPrompt, '上記の素材を統合した証拠整理資料を作成してください。');
+
     } else {
       return NextResponse.json({ error: '不正なtype です' }, { status: 400 });
     }
 
-    const response = await client.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 4096,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userContent }],
-    });
-
-    const result = response.content[0].type === 'text' ? response.content[0].text : '';
     return NextResponse.json({ result });
   } catch (error) {
     console.error('Analyze error:', error);
