@@ -4,9 +4,7 @@
  *
  * ─── 準備（これだけでOK）───────────────────────────────────
  *  1. https://creatomate.com で無料アカウント作成
- *  2. ログイン後 Settings → API → API Key をコピー
- *  3. プロジェクトの .env.local に以下を1行追記:
- *       CREATOMATE_API_KEY=ここにコピーしたキーを貼る
+ *  2. Settings → API → API Key をコピー
  *
  * ─── 実行 ────────────────────────────────────────────────
  *  npm run generate-video                  # 全5パターン生成
@@ -23,19 +21,15 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import https from 'node:https';
+import readline from 'node:readline';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-// .env.local を読み込む（dotenv 不要）
+// .env.local があれば読み込む（なくてもOK）
 function loadEnv() {
   const envPath = path.join(ROOT, '.env.local');
-  if (!fs.existsSync(envPath)) {
-    console.error('\n❌ .env.local が見つかりません');
-    console.error('   プロジェクトのルートに .env.local を作成して');
-    console.error('   CREATOMATE_API_KEY=your_key_here を追記してください\n');
-    process.exit(1);
-  }
+  if (!fs.existsSync(envPath)) return;
   for (const line of fs.readFileSync(envPath, 'utf-8').split('\n')) {
     const t = line.trim();
     if (!t || t.startsWith('#')) continue;
@@ -307,15 +301,49 @@ async function run(patternKey) {
   console.log(`  ✅ output/mamori-${patternKey}.mp4 に保存`);
 }
 
+// APIキーをターミナルで対話的に入力してもらう
+function askApiKey() {
+  return new Promise(resolve => {
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+    console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('  Creatomate の API Key を入力してください');
+    console.log('  （creatomate.com → Settings → API → API Key）');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    rl.question('\n  API Key: ', answer => {
+      rl.close();
+      resolve(answer.trim());
+    });
+  });
+}
+
+// APIキーを .env.local に保存（次回から入力不要になる）
+function saveApiKey(key) {
+  const envPath = path.join(ROOT, '.env.local');
+  const line = `CREATOMATE_API_KEY=${key}\n`;
+  if (fs.existsSync(envPath)) {
+    const existing = fs.readFileSync(envPath, 'utf-8');
+    if (!existing.includes('CREATOMATE_API_KEY')) {
+      fs.appendFileSync(envPath, '\n' + line);
+      console.log('\n  ✅ API Key を .env.local に保存しました（次回から入力不要）');
+    }
+  } else {
+    fs.writeFileSync(envPath, line);
+    console.log('\n  ✅ .env.local を作成して API Key を保存しました（次回から入力不要）');
+  }
+}
+
 async function main() {
   loadEnv();
 
-  const apiKey = process.env.CREATOMATE_API_KEY;
+  let apiKey = process.env.CREATOMATE_API_KEY;
   if (!apiKey) {
-    console.error('\n❌ CREATOMATE_API_KEY が設定されていません');
-    console.error('   .env.local に以下を追記してください:');
-    console.error('   CREATOMATE_API_KEY=your_key_here\n');
-    process.exit(1);
+    apiKey = await askApiKey();
+    if (!apiKey) {
+      console.error('\n❌ API Key が入力されませんでした\n');
+      process.exit(1);
+    }
+    saveApiKey(apiKey);
+    process.env.CREATOMATE_API_KEY = apiKey;
   }
 
   const allKeys = Object.keys(PATTERNS);
