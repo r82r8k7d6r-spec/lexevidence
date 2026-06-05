@@ -39,9 +39,10 @@ export default function TermsPage() {
             <h2 className="text-lg font-bold text-gray-900 border-b border-gray-200 pb-2 mb-3">3. 個人情報の取り扱い</h2>
             <ul className="space-y-2 list-disc list-inside">
               <li>ユーザーが入力した個人情報・証拠データは、AI処理（資料生成）のみを目的として使用します。</li>
-              <li>入力データは当サービスのサーバーに保存・記録しません。セッション終了後にデータは破棄されます。</li>
-              <li>データはAnthropic社（Claude API）およびOpenAI社（Whisper API）のAPIに送信されます。各社のプライバシーポリシーが適用されます。</li>
-              <li>第三者への個人情報の提供は、上記API利用を除き行いません。</li>
+              <li>入力データは、決済処理（Stripe）のリダイレクト後にデータを復元するため、Supabase社のクラウドストレージに一時的に保存されます。資料の生成が完了した時点で自動的に削除されます。</li>
+              <li>資料生成のため、入力データはAnthropic社（Claude API）のAPIに送信されます。音声ファイルをご利用の場合は、文字起こしのためOpenAI社（Whisper API）にも送信されます。各社のプライバシーポリシーが適用されます。</li>
+              <li>第三者への個人情報の提供は、上記のSupabase・Anthropic・OpenAIへの送信を除き行いません。</li>
+              <li>Anthropic社・OpenAI社のAPIに送信されたデータは、各社の規約に基づきAIモデルの学習には使用されません。</li>
             </ul>
           </section>
 
