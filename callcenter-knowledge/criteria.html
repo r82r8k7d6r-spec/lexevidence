@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>判断基準表 | コールセンター ナレッジベース</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<header class="site-header">
+  <div class="container header-inner">
+    <a class="logo" href="index.html">📞 コールセンター ナレッジベース</a>
+    <nav class="main-nav">
+      <a href="index.html">ホーム</a>
+      <a href="faq.html">FAQ</a>
+      <a href="flow.html">切り分けフロー</a>
+      <a href="criteria.html" class="active">判断基準</a>
+      <a href="escalation.html">手上げ記録</a>
+      <a href="claim.html">クレーム対応事例</a>
+    </nav>
+  </div>
+</header>
+
+<main class="container">
+  <h1 class="page-title">判断基準表（自己判断OK／SVに確認／即エスカレ）</h1>
+  <p class="page-desc">
+    「どこまで自分で判断してよいか」を明文化した一覧です。新しいパターンに遭遇した場合は、対応後に必ずこの表へ追記してください。
+    判断に迷う場合は「SVに確認」を選び、手上げ記録にも残してください。
+  </p>
+
+  <div class="card">
+    <h2>新規登録</h2>
+    <form id="criteria-form">
+      <div class="form-grid">
+        <div class="field">
+          <label for="cri-category">カテゴリ</label>
+          <select id="cri-category"></select>
+        </div>
+        <div class="field">
+          <label for="cri-judgment">判断</label>
+          <select id="cri-judgment">
+            <option value="ok">自己判断OK</option>
+            <option value="confirm">SVに確認</option>
+            <option value="escalate">即エスカレ</option>
+          </select>
+        </div>
+        <div class="field full">
+          <label for="cri-situation">状況・ケース</label>
+          <input type="text" id="cri-situation" required placeholder="例：v6プラス環境で特定ゲームのポートが使えない" />
+        </div>
+        <div class="field full">
+          <label for="cri-note">対応内容・根拠</label>
+          <textarea id="cri-note" required placeholder="どう対応すべきか、なぜその判断になるのかを記入してください"></textarea>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button type="submit" class="btn">登録する</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="toolbar">
+    <div class="field">
+      <label for="search-input">キーワード検索</label>
+      <input type="search" id="search-input" placeholder="状況・対応内容から検索" />
+    </div>
+    <div class="field">
+      <label for="filter-category">カテゴリで絞り込み</label>
+      <select id="filter-category">
+        <option value="">すべて</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="filter-judgment">判断で絞り込み</label>
+      <select id="filter-judgment">
+        <option value="">すべて</option>
+        <option value="ok">自己判断OK</option>
+        <option value="confirm">SVに確認</option>
+        <option value="escalate">即エスカレ</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="card">
+    <table>
+      <thead>
+        <tr>
+          <th>カテゴリ</th>
+          <th>判断</th>
+          <th>状況・ケース</th>
+          <th>対応内容・根拠</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="criteria-rows"></tbody>
+    </table>
+    <p class="empty-state" id="empty-state" style="display:none;">該当する基準が見つかりませんでした。</p>
+  </div>
+</main>
+
+<script src="js/storage.js"></script>
+<script>
+  let criteria = loadItems("criteria", DEFAULT_CRITERIA);
+
+  const rowsEl = document.getElementById("criteria-rows");
+  const emptyEl = document.getElementById("empty-state");
+  const searchInput = document.getElementById("search-input");
+  const filterCategory = document.getElementById("filter-category");
+  const filterJudgment = document.getElementById("filter-judgment");
+  const criCategorySelect = document.getElementById("cri-category");
+
+  const JUDGMENT_LABEL = { ok: "自己判断OK", confirm: "SVに確認", escalate: "即エスカレ" };
+
+  const ALL_CATEGORIES = [...ESCALATION_CATEGORIES, "その他"];
+  ALL_CATEGORIES.forEach((cat) => {
+    const opt1 = document.createElement("option");
+    opt1.value = cat;
+    opt1.textContent = cat;
+    criCategorySelect.appendChild(opt1);
+
+    const opt2 = document.createElement("option");
+    opt2.value = cat;
+    opt2.textContent = cat;
+    filterCategory.appendChild(opt2);
+  });
+
+  function render() {
+    const keyword = searchInput.value.trim().toLowerCase();
+    const category = filterCategory.value;
+    const judgment = filterJudgment.value;
+
+    const filtered = criteria.filter((c) => {
+      if (category && c.category !== category) return false;
+      if (judgment && c.judgment !== judgment) return false;
+      if (!keyword) return true;
+      const haystack = [c.situation, c.note].join(" ").toLowerCase();
+      return haystack.includes(keyword);
+    });
+
+    rowsEl.innerHTML = "";
+    emptyEl.style.display = filtered.length ? "none" : "block";
+
+    filtered
+      .slice()
+      .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""))
+      .forEach((c) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td><span class="badge category">${escapeHtml(c.category)}</span></td>
+          <td><span class="badge ${c.judgment}">${JUDGMENT_LABEL[c.judgment] || c.judgment}</span></td>
+          <td>${escapeHtml(c.situation)}</td>
+          <td>${escapeHtml(c.note).replace(/\n/g, "<br>")}</td>
+          <td><button type="button" class="btn danger btn-delete">削除</button></td>
+        `;
+        tr.querySelector(".btn-delete").addEventListener("click", () => {
+          if (!confirm("この基準を削除しますか？")) return;
+          criteria = criteria.filter((x) => x.id !== c.id);
+          saveItems("criteria", criteria);
+          render();
+        });
+        rowsEl.appendChild(tr);
+      });
+  }
+
+  document.getElementById("criteria-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const situation = document.getElementById("cri-situation").value.trim();
+    const note = document.getElementById("cri-note").value.trim();
+    const category = document.getElementById("cri-category").value;
+    const judgment = document.getElementById("cri-judgment").value;
+
+    if (!situation || !note) return;
+
+    criteria.push({
+      id: generateId(),
+      category,
+      situation,
+      judgment,
+      note,
+      createdAt: nowForInput().replace("T", " "),
+    });
+    saveItems("criteria", criteria);
+    e.target.reset();
+    document.getElementById("cri-category").value = category;
+    document.getElementById("cri-judgment").value = "ok";
+    render();
+  });
+
+  searchInput.addEventListener("input", render);
+  filterCategory.addEventListener("change", render);
+  filterJudgment.addEventListener("change", render);
+
+  render();
+</script>
+</body>
+</html>

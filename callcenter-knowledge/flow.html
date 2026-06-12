@@ -14,6 +14,7 @@
       <a href="index.html">ホーム</a>
       <a href="faq.html">FAQ</a>
       <a href="flow.html" class="active">切り分けフロー</a>
+      <a href="criteria.html">判断基準</a>
       <a href="escalation.html">手上げ記録</a>
       <a href="claim.html">クレーム対応事例</a>
     </nav>
@@ -37,6 +38,7 @@
       <ol class="flow-steps" id="result-steps"></ol>
       <div class="btn-row">
         <a href="faq.html" class="btn secondary">FAQを確認する</a>
+        <a href="criteria.html" class="btn secondary">判断基準を確認する</a>
         <a href="escalation.html" class="btn danger" id="escalate-link" style="display:none;">手上げ記録に進む</a>
       </div>
     </div>
@@ -57,152 +59,330 @@
         type: "question",
         title: "お問い合わせ内容を選択してください",
         options: [
-          { label: "ログイン・アカウントに関する問題", next: "login" },
-          { label: "決済・料金に関する問題", next: "billing" },
-          { label: "データのアップロード・分析に関する問題", next: "upload" },
-          { label: "出力（PDF/レポート）に関する問題", next: "output" },
-          { label: "その他のお問い合わせ", next: "other_result" },
+          { label: "技術切り分け（インターネット接続トラブル）", next: "tech_root" },
+          { label: "V6システム関連（v6プラス・IPv6）", next: "v6_root" },
+          { label: "契約確認", next: "contract_root" },
+          { label: "工事関連", next: "const_root" },
+          { label: "システム操作", next: "sys_root" },
+          { label: "クレーム対応", next: "claimflow_root" },
+          { label: "例外案件（過去に類似ケースがあるか不明な内容）", next: "exception_root" },
         ],
       },
-      login: {
+
+      /* ============ 技術切り分け（手上げ全体の約30%） ============ */
+      tech_root: {
         type: "question",
-        title: "ログイン・アカウントについて、症状を選択してください",
+        title: "【技術切り分け】症状を選択してください",
         options: [
-          { label: "パスワードを忘れた／再設定できない", next: "login_password_result" },
-          { label: "ログインボタンを押すとエラーになる", next: "login_error" },
-          { label: "確認メール・認証メールが届かない", next: "login_email_result" },
+          { label: "インターネットに全く接続できない", next: "tech_no_conn" },
+          { label: "接続はできるが速度が遅い", next: "tech_slow" },
+          { label: "特定のサイト・サービス・アプリのみ繋がらない", next: "tech_specific" },
+          { label: "時々切れる（間欠的に切断する）", next: "tech_intermittent_result" },
         ],
       },
-      login_error: {
+      tech_no_conn: {
         type: "question",
-        title: "表示されるエラーの内容に近いものを選択してください",
+        title: "ルーター／ONUのランプの状態を確認してください",
         options: [
-          { label: "「メールアドレスまたはパスワードが正しくありません」と表示される", next: "login_password_result" },
-          { label: "ページが真っ白になる／読み込み中のまま止まる", next: "login_session_result" },
-          { label: "上記に当てはまらない", next: "escalation_result" },
+          { label: "電源ランプが消灯している", next: "tech_power_result" },
+          { label: "インターネット（PPP/ONU等）ランプが消灯・赤色点灯している", next: "tech_line_check" },
+          { label: "全てのランプが正常に点灯している", next: "tech_pc_result" },
         ],
       },
-      login_password_result: {
+      tech_power_result: {
         type: "result",
-        title: "パスワード再設定をご案内ください",
+        title: "電源が入らない場合のご案内",
         steps: [
-          "ログイン画面の「パスワードをお忘れの方」リンクから登録メールアドレスを入力いただくようご案内します。",
-          "再設定メールが届かない場合は、迷惑メールフォルダや受信拒否設定をご確認いただきます。",
-          "数分待っても届かない場合は、登録メールアドレスの入力誤りがないか確認します。",
-        ],
-      },
-      login_email_result: {
-        type: "result",
-        title: "認証メールが届かない場合のご案内",
-        steps: [
-          "登録メールアドレスに誤りがないかご確認いただきます。",
-          "迷惑メールフォルダ、ドメイン指定受信・拒否設定をご確認いただきます。",
-          "上記で改善しない場合は、メールアドレスとお問い合わせ時刻を記録し手上げを行います。",
+          "電源タップ・ACアダプタの接続、コンセント自体の通電をご確認いただきます。",
+          "ルーターの電源プラグを抜き、10秒ほど待ってから再度差し込む「再起動」をご案内します。",
+          "再起動後も電源ランプが点灯しない場合は、機器故障の可能性として手上げ記録に登録します。",
         ],
         escalate: true,
       },
-      login_session_result: {
-        type: "result",
-        title: "画面が正しく表示されない場合のご案内",
-        steps: [
-          "ブラウザのキャッシュ・クッキーの削除、または別のブラウザ・デバイスでの再試行をご案内します。",
-          "改善しない場合は、発生日時・利用環境（OS・ブラウザ）をヒアリングします。",
-          "解消しない場合は手上げ記録に登録し、開発チームへ連携します。",
-        ],
-        escalate: true,
-      },
-      billing: {
+      tech_line_check: {
         type: "question",
-        title: "決済・料金について、症状を選択してください",
+        title: "同じ時間帯・同じエリアで同様のお問い合わせが他にもありますか？（SVに確認）",
         options: [
-          { label: "お支払いが完了しない／エラーになる", next: "billing_error_result" },
-          { label: "料金プランの変更・解約方法が分からない", next: "billing_plan_result" },
-          { label: "二重決済・請求内容に誤りがある", next: "escalation_result" },
+          { label: "複数件発生している（広域障害の可能性）", next: "escalation_result" },
+          { label: "今のところ該当のお客様のみ", next: "tech_single_result" },
         ],
       },
-      billing_error_result: {
+      tech_single_result: {
         type: "result",
-        title: "決済エラー時のご案内",
+        title: "個別の接続不可の場合のご案内",
         steps: [
-          "カード番号・有効期限・セキュリティコードの入力内容に誤りがないかご確認いただきます。",
-          "カード会社側で利用制限がかかっていないか、お客様にご確認いただきます。",
-          "別のお支払い方法・別のカードでの再試行をご案内します。",
-          "改善しない場合は決済ログの確認が必要なため、手上げ記録に登録します。",
+          "ONU・ルーターの電源を抜き、10秒待ってから再接続（再起動）をご案内します。",
+          "LANケーブルの挿し直しをご案内します。",
+          "回線契約情報に基づき、認証設定（ID/パスワード）に誤りがないか確認します。",
+          "5分程度待っても復旧しない場合は手上げ記録に登録します。",
         ],
         escalate: true,
       },
-      billing_plan_result: {
+      tech_pc_result: {
         type: "result",
-        title: "プラン変更・解約方法のご案内",
+        title: "ランプは正常だが繋がらない場合のご案内",
         steps: [
-          "マイページの「ご契約情報」からプラン変更・解約のお手続きが可能であることをご案内します。",
-          "解約後も当月末まではサービスをご利用いただけることをお伝えします。",
+          "PC・スマートフォン等の端末を再起動するようご案内します。",
+          "他の端末でも同様に接続できないかご確認いただきます。",
+          "可能であれば有線LAN接続で試していただきます。",
+          "改善しない場合は、端末側の設定確認が必要なため手上げ記録に登録します。",
         ],
+        escalate: true,
       },
-      upload: {
+      tech_slow: {
         type: "question",
-        title: "データのアップロード・分析について、症状を選択してください",
+        title: "有線LAN接続でも遅いですか？",
         options: [
-          { label: "ファイルがアップロードできない", next: "upload_fail_result" },
-          { label: "アップロードは完了するが処理が終わらない", next: "upload_processing_result" },
-          { label: "分析結果の内容に誤りがある", next: "escalation_result" },
+          { label: "有線でも遅い", next: "tech_slow_wired_result" },
+          { label: "無線（Wi-Fi）のみ遅い", next: "tech_slow_wifi_result" },
         ],
       },
-      upload_fail_result: {
+      tech_slow_wired_result: {
         type: "result",
-        title: "アップロードできない場合のご案内",
+        title: "有線接続でも速度が遅い場合のご案内",
         steps: [
-          "対応しているファイル形式・サイズの上限をご案内します。",
-          "通信環境（できればWi-Fi）をご確認いただき、再試行をお願いします。",
-          "改善しない場合は、ファイル形式・サイズ・表示されたエラーメッセージを記録し手上げを行います。",
+          "ご契約中のプランの速度帯（ベストエフォート値）をご案内します。",
+          "夜間・休日などの混雑時間帯は速度が低下しやすいことをご説明します。",
+          "計測サイトでの実測値（時間帯・複数回）を確認いただきます。",
+          "契約速度帯から大幅に下回る状態が続く場合は手上げ記録に登録します。",
         ],
         escalate: true,
       },
-      upload_processing_result: {
+      tech_slow_wifi_result: {
         type: "result",
-        title: "処理が完了しない場合のご案内",
+        title: "Wi-Fi接続のみ速度が遅い場合のご案内",
         steps: [
-          "ファイルサイズによっては処理に数分程度かかる場合があることをご案内します。",
-          "10分以上経過しても完了しない場合は、手上げ記録に登録し開発チームへ連携します。",
+          "ルーターの設置場所（電子レンジ・金属製家具・水槽の近くを避ける）の見直しをご案内します。",
+          "2.4GHz/5GHzなど周波数帯の変更、利用チャンネルの変更をご案内します。",
+          "同時接続台数が多い場合、速度に影響することをご説明します。",
         ],
-        escalate: true,
       },
-      output: {
+      tech_specific: {
         type: "question",
-        title: "出力（PDF/レポート）について、症状を選択してください",
+        title: "繋がらない対象を選択してください",
         options: [
-          { label: "PDFが生成されない／エラーになる", next: "output_fail_result" },
-          { label: "PDFはダウンロードできるが内容が崩れている", next: "escalation_result" },
-          { label: "ダウンロードボタンを押しても反応しない", next: "output_download_result" },
+          { label: "特定のWebサイトのみ表示できない", next: "tech_site_result" },
+          { label: "オンラインゲーム・特定アプリのみ繋がらない／ポートが使えない", next: "v6_game_result" },
         ],
       },
-      output_fail_result: {
+      tech_site_result: {
         type: "result",
-        title: "PDF生成エラー時のご案内",
+        title: "特定サイトのみ表示できない場合のご案内",
         steps: [
-          "入力データに不足や、使用できない文字種が含まれていないかご確認いただきます。",
-          "時間をおいて再度生成をお試しいただくようご案内します。",
-          "改善しない場合は手上げ記録に登録します。",
+          "ブラウザのキャッシュ・Cookieの削除をご案内します。",
+          "別のブラウザ・別の端末での表示確認をお願いします。",
+          "プロバイダ提供のDNS設定に問題がある可能性があるため、DNS設定の確認・変更（例：8.8.8.8等への変更）をご案内します。",
+          "特定サイト側の障害情報も併せて確認します。",
         ],
         escalate: true,
       },
-      output_download_result: {
+      tech_intermittent_result: {
         type: "result",
-        title: "ダウンロードボタンが反応しない場合のご案内",
+        title: "間欠的に切断する場合のご案内",
         steps: [
-          "ブラウザのポップアップブロック設定をご確認いただきます。",
-          "別のブラウザ・デバイスでの再試行をご案内します。",
-        ],
-      },
-      other_result: {
-        type: "result",
-        title: "その他のお問い合わせ",
-        steps: [
-          "FAQページで類似の質問が登録されていないかご確認ください。",
-          "該当する内容がない場合は、お問い合わせ内容を手上げ記録に登録し、担当チームに確認します。",
+          "発生時刻・頻度・継続時間を記録いただくようお願いします。",
+          "ルーターのファームウェアが最新版か確認します。",
+          "無線LANの場合は有線接続時に再現するかをご確認いただきます。",
+          "再現性が高い、または頻発する場合は手上げ記録に登録し、設備調査を依頼します。",
         ],
         escalate: true,
       },
+
+      /* ============ V6システム関連（手上げ全体の約20%） ============ */
+      v6_root: {
+        type: "question",
+        title: "【V6システム関連】症状を選択してください",
+        options: [
+          { label: "v6プラス対応ルーターに変更したが接続できない", next: "v6_router_setting_result" },
+          { label: "使用しているルーターがv6プラスに対応しているか分からない", next: "v6_unsupported_result" },
+          { label: "従来方式（PPPoE）からv6プラスへの切替方法が分からない", next: "v6_migration_result" },
+          { label: "v6プラス環境で特定のオンラインゲーム・アプリのポートが使えない", next: "v6_game_result" },
+          { label: "設定は完了しているはずだが接続できない（原因不明）", next: "v6_unresolved_result" },
+        ],
+      },
+      v6_router_setting_result: {
+        type: "result",
+        title: "v6プラス対応ルーター設定後に接続できない場合のご案内",
+        steps: [
+          "ルーターの管理画面でIPv6 IPoE（v6プラス）方式が有効になっているかご確認いただきます。",
+          "VNE事業者情報の設定が正しいか確認します。",
+          "設定変更後はルーターを再起動し、設定を反映するようご案内します。",
+          "改善しない場合はルーターのファームウェアバージョンを確認し、最新版への更新をご案内します。",
+        ],
+        escalate: true,
+      },
+      v6_unsupported_result: {
+        type: "result",
+        title: "v6プラス対応状況が不明な場合のご案内",
+        steps: [
+          "対応ルーターの一覧をご案内します。",
+          "レンタルルーターをご利用中の場合は、対応機種への交換手続きをご案内します（契約確認カテゴリと連携）。",
+          "購入をご希望の場合は対応機種一覧をご案内します。",
+        ],
+      },
+      v6_migration_result: {
+        type: "result",
+        title: "PPPoEからv6プラスへの切替方法のご案内",
+        steps: [
+          "v6プラスは追加申込不要でご利用いただける場合が多いことをご説明します。",
+          "対応ルーターへの交換・設定変更が必要であることをご案内します。",
+          "切替後はルーター側のPPPoE接続設定を無効化する必要がある場合があることをご説明します。",
+        ],
+      },
+      v6_game_result: {
+        type: "result",
+        title: "v6プラス環境でポートが使えない場合のご案内",
+        steps: [
+          "v6プラスは仕様上、ポート開放（UPnP・ポートフォワーディング）に制限があることをご説明します。",
+          "従来のPPPoE接続を別途利用できる「PPPoEオプション」をご契約いただくことで、ポート開放が可能になる場合があることをご案内します。",
+          "オプションのご契約状況・お申し込みについては契約確認カテゴリの手順をご案内します。",
+        ],
+      },
+      v6_unresolved_result: {
+        type: "result",
+        title: "設定済みでも原因不明で接続できない場合のご案内",
+        steps: [
+          "設定内容（VNE事業者情報・対応ルーターの型番）を確認し記録します。",
+          "発生時刻・表示されているエラー内容を記録します。",
+          "同時刻に同様のお問い合わせが他に発生していないかSVに確認します。",
+          "V6システム障害の可能性があるため、手上げ記録に登録します。",
+        ],
+        escalate: true,
+      },
+
+      /* ============ 契約確認（手上げ全体の約5%） ============ */
+      contract_root: {
+        type: "question",
+        title: "【契約確認】お問い合わせ内容を選択してください",
+        options: [
+          { label: "契約者本人によるプラン・料金・契約内容の確認", next: "contract_info_result" },
+          { label: "名義変更・解約の手続き", next: "contract_change_result" },
+          { label: "契約者以外からの契約内容に関する開示請求", next: "escalation_result" },
+        ],
+      },
+      contract_info_result: {
+        type: "result",
+        title: "契約内容確認のご案内",
+        steps: [
+          "登録氏名・住所・契約者番号のうち2項目以上で本人確認を行います。",
+          "契約内容確認システムでプラン・料金・割引情報をご案内します。",
+          "マイページでも同様の情報を確認できることをご案内します。",
+        ],
+      },
+      contract_change_result: {
+        type: "result",
+        title: "名義変更・解約手続きのご案内",
+        steps: [
+          "登録氏名・住所・契約者番号のうち2項目以上で本人確認を行います。",
+          "名義変更・解約の手続き方法と必要書類をご案内します。",
+          "解約の場合、違約金が発生する契約期間内かどうかを確認しご説明します。",
+          "解約後も当月末まではサービスをご利用いただけることをご案内します。",
+          "死亡・離婚等の特殊な事情がある場合は手上げ記録に登録します。",
+        ],
+        escalate: true,
+      },
+
+      /* ============ 工事関連（手上げ全体の約10%） ============ */
+      const_root: {
+        type: "question",
+        title: "【工事関連】お問い合わせ内容を選択してください",
+        options: [
+          { label: "工事日程の確認・変更（通常の空き枠内）", next: "const_schedule_result" },
+          { label: "工事担当者の対応に関する苦情", next: "escalation_result" },
+          { label: "提供エリア外・工事不可と判定された住所への新規申込", next: "escalation_result" },
+        ],
+      },
+      const_schedule_result: {
+        type: "result",
+        title: "工事日程確認・変更のご案内",
+        steps: [
+          "本人確認を行います。",
+          "工事予約システムで現在の予定日時を確認します。",
+          "変更可能な日程の候補をご案内します。",
+          "工事当日は契約者またはご家族の立会いが必要であることをご説明します。",
+        ],
+      },
+
+      /* ============ システム操作（手上げ全体の約5%） ============ */
+      sys_root: {
+        type: "question",
+        title: "【システム操作】お問い合わせ内容を選択してください",
+        options: [
+          { label: "メールの設定方法", next: "sys_mail_result" },
+          { label: "Wi-Fi（無線LAN）の接続設定方法", next: "sys_wifi_result" },
+          { label: "顧客向けポータル・マイページの操作方法", next: "sys_portal_result" },
+          { label: "顧客管理システムでエラーが表示される（オペレーター操作時）", next: "escalation_result" },
+        ],
+      },
+      sys_mail_result: {
+        type: "result",
+        title: "メール設定方法のご案内",
+        steps: [
+          "お使いのメールソフトに応じて、受信・送信サーバー名、ポート番号、SSL/TLS設定をご案内します。",
+          "設定情報はご契約時の控え、またはマイページの「メール設定情報」から確認できることをご案内します。",
+          "パスワードを忘れた場合はマイページから再設定が可能であることをご案内します。",
+        ],
+      },
+      sys_wifi_result: {
+        type: "result",
+        title: "Wi-Fi接続設定方法のご案内",
+        steps: [
+          "ルーター本体に記載のSSID（ネットワーク名）・暗号化キー（パスワード）を使って接続するようご案内します。",
+          "接続できない場合はルーターの再起動をご案内します。",
+          "改善しない場合は「技術切り分け」カテゴリの手順に進みます。",
+        ],
+      },
+      sys_portal_result: {
+        type: "result",
+        title: "マイページの操作方法のご案内",
+        steps: [
+          "マイページのログイン方法と、主な機能（契約確認・料金確認・工事予約・メール設定確認等）をご案内します。",
+          "ログインできない場合は、パスワード再設定方法をご案内します。",
+        ],
+      },
+
+      /* ============ クレーム対応（手上げ全体の約10%） ============ */
+      claimflow_root: {
+        type: "question",
+        title: "【クレーム対応】お問い合わせ内容を選択してください",
+        options: [
+          { label: "サービス品質への不満（説明・お詫びで対応可能な内容）", next: "claimflow_basic_result" },
+          { label: "返金・割引・補償の要求", next: "escalation_result" },
+          { label: "強い暴言、訴訟・法的措置を示唆する発言", next: "escalation_result" },
+        ],
+      },
+      claimflow_basic_result: {
+        type: "result",
+        title: "サービス品質への不満への一次対応のご案内",
+        steps: [
+          "お客様のお話を最後まで傾聴します。",
+          "ご不便をおかけした点について、まずお詫びします。",
+          "原因や今後の改善点について分かりやすくご説明します。",
+          "対応内容は必ず「クレーム対応事例」に記録します。",
+        ],
+      },
+
+      /* ============ 例外案件（手上げ全体の約20%） ============ */
+      exception_root: {
+        type: "question",
+        title: "【例外案件】お問い合わせ内容を選択してください",
+        options: [
+          { label: "過去に類似のケースを対応した記録がある", next: "exception_known_result" },
+          { label: "初めて遭遇するパターンである", next: "escalation_result" },
+        ],
+      },
+      exception_known_result: {
+        type: "result",
+        title: "過去に類似事例がある場合のご案内",
+        steps: [
+          "「判断基準表」「手上げ記録」「クレーム対応事例」を確認し、過去の対応内容を参照します。",
+          "過去の対応に沿ってご案内します。",
+          "状況が過去の事例と異なる点がある場合はSVに確認します。",
+          "対応後、判断基準表に未登録であれば新たに登録します。",
+        ],
+      },
+
+      /* ============ 共通：即エスカレ ============ */
       escalation_result: {
         type: "result",
         title: "エスカレーションが必要な内容です",
@@ -210,6 +390,7 @@
           "お客様の連絡先・発生状況・発生日時を確認します。",
           "「手上げ記録」ページから新規記録を登録します。",
           "内容に応じて緊急度を選択し、担当チームへ連携します。",
+          "対応完了後は、再発時に自己解決できるよう「判断基準表」への追記を検討します。",
         ],
         escalate: true,
       },

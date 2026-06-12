@@ -14,6 +14,7 @@
       <a href="index.html">ホーム</a>
       <a href="faq.html" class="active">FAQ</a>
       <a href="flow.html">切り分けフロー</a>
+      <a href="criteria.html">判断基準</a>
       <a href="escalation.html">手上げ記録</a>
       <a href="claim.html">クレーム対応事例</a>
     </nav>
@@ -34,13 +35,7 @@
         </div>
         <div class="field">
           <label for="faq-category">カテゴリ</label>
-          <select id="faq-category">
-            <option value="ログイン・認証">ログイン・認証</option>
-            <option value="料金・決済">料金・決済</option>
-            <option value="操作方法">操作方法</option>
-            <option value="不具合・エラー">不具合・エラー</option>
-            <option value="その他">その他</option>
-          </select>
+          <select id="faq-category"></select>
         </div>
         <div class="field">
           <label for="faq-tags">タグ（カンマ区切り）</label>
@@ -66,11 +61,6 @@
       <label for="filter-category">カテゴリで絞り込み</label>
       <select id="filter-category">
         <option value="">すべて</option>
-        <option value="ログイン・認証">ログイン・認証</option>
-        <option value="料金・決済">料金・決済</option>
-        <option value="操作方法">操作方法</option>
-        <option value="不具合・エラー">不具合・エラー</option>
-        <option value="その他">その他</option>
       </select>
     </div>
   </div>
@@ -87,6 +77,20 @@
   const emptyEl = document.getElementById("empty-state");
   const searchInput = document.getElementById("search-input");
   const filterCategory = document.getElementById("filter-category");
+  const faqCategorySelect = document.getElementById("faq-category");
+
+  const ALL_CATEGORIES = [...ESCALATION_CATEGORIES, "その他"];
+  ALL_CATEGORIES.forEach((cat) => {
+    const opt1 = document.createElement("option");
+    opt1.value = cat;
+    opt1.textContent = cat;
+    faqCategorySelect.appendChild(opt1);
+
+    const opt2 = document.createElement("option");
+    opt2.value = cat;
+    opt2.textContent = cat;
+    filterCategory.appendChild(opt2);
+  });
 
   function render() {
     const keyword = searchInput.value.trim().toLowerCase();

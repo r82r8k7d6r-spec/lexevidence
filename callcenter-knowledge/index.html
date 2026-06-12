@@ -14,6 +14,7 @@
       <a href="index.html" class="active">ホーム</a>
       <a href="faq.html">FAQ</a>
       <a href="flow.html">切り分けフロー</a>
+      <a href="criteria.html">判断基準</a>
       <a href="escalation.html">手上げ記録</a>
       <a href="claim.html">クレーム対応事例</a>
     </nav>
@@ -38,8 +39,15 @@
     <a class="nav-card" href="flow.html">
       <div class="icon">🧭</div>
       <h3>技術切り分けフロー</h3>
-      <p>お問い合わせ内容に応じて質問に答えていくことで、対応方法を案内するフローチャートです。</p>
+      <p>お問い合わせ内容に応じて質問に答えていくことで、対応方法を案内するフローチャートです。技術切り分け・V6システム関連を重点的にカバーしています。</p>
       <div class="count" id="count-flow">対話形式で進行</div>
+    </a>
+
+    <a class="nav-card" href="criteria.html">
+      <div class="icon">✅</div>
+      <h3>判断基準（自己判断OK／即エスカレ）</h3>
+      <p>「どこまで自分で判断してよいか」を一覧化した基準表です。新しいパターンは対応後に追記してください。</p>
+      <div class="count" id="count-criteria">読込中...</div>
     </a>
 
     <a class="nav-card" href="escalation.html">
@@ -62,9 +70,19 @@
     <ul>
       <li><strong>FAQ</strong>：お客様から頻繁に寄せられる質問とその回答を登録し、キーワードやカテゴリで検索できます。</li>
       <li><strong>切り分けフロー</strong>：症状を選択していくことで、対応手順や案内文をその場で確認できます。解決しない場合はエスカレーションへの導線があります。</li>
-      <li><strong>手上げ記録</strong>：一次対応で解決できなかった問い合わせを記録し、対応状況（未対応・対応中・解決済み）を管理します。</li>
+      <li><strong>判断基準</strong>：「自己判断OK」「SVに確認」「即エスカレ」の境界線を一覧化したものです。判断に迷ったらまずここを確認してください。</li>
+      <li><strong>手上げ記録</strong>：一次対応で解決できなかった問い合わせを記録し、対応状況（未対応・対応中・解決済み）とカテゴリ別の発生傾向を管理します。</li>
       <li><strong>クレーム対応事例</strong>：過去のクレーム対応の内容・結果・教訓を記録し、類似事例の対応時に参照します。</li>
     </ul>
+  </div>
+
+  <div class="card">
+    <h2>手上げ率の目標（参考）</h2>
+    <p class="page-desc" style="margin-bottom: 0;">
+      現状の手上げ率は約30%です。ナレッジ蓄積（FAQ・切り分けフロー・判断基準）の定着により、
+      <strong>1ヶ月目で25%程度、3ヶ月目で18〜20%程度、6ヶ月目で12〜15%程度</strong>への改善を目標とします。
+      手上げ記録のカテゴリ別件数を定期的に確認し、技術切り分け・V6システム関連の比率の変化を追ってください。
+    </p>
   </div>
 </main>
 
@@ -73,6 +91,7 @@
   const faqs = loadItems("faqs", DEFAULT_FAQS);
   const escalations = loadItems("escalations", []);
   const claims = loadItems("claims", DEFAULT_CLAIMS);
+  const criteria = loadItems("criteria", DEFAULT_CRITERIA);
 
   document.getElementById("count-faq").textContent = `${faqs.length} 件登録済み`;
 
@@ -81,6 +100,7 @@
     `${escalations.length} 件（未対応・対応中 ${openEsc} 件）`;
 
   document.getElementById("count-claim").textContent = `${claims.length} 件登録済み`;
+  document.getElementById("count-criteria").textContent = `${criteria.length} 件登録済み`;
 </script>
 </body>
 </html>

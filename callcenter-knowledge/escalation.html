@@ -14,6 +14,7 @@
       <a href="index.html">ホーム</a>
       <a href="faq.html">FAQ</a>
       <a href="flow.html">切り分けフロー</a>
+      <a href="criteria.html">判断基準</a>
       <a href="escalation.html" class="active">手上げ記録</a>
       <a href="claim.html">クレーム対応事例</a>
     </nav>
@@ -42,13 +43,7 @@
         </div>
         <div class="field">
           <label for="esc-category">カテゴリ</label>
-          <select id="esc-category">
-            <option value="ログイン・認証">ログイン・認証</option>
-            <option value="料金・決済">料金・決済</option>
-            <option value="アップロード・分析">アップロード・分析</option>
-            <option value="出力（PDF/レポート）">出力（PDF/レポート）</option>
-            <option value="その他">その他</option>
-          </select>
+          <select id="esc-category"></select>
         </div>
         <div class="field">
           <label for="esc-urgency">緊急度</label>
@@ -73,7 +68,30 @@
     </form>
   </div>
 
+  <div class="card" id="summary-card">
+    <h2>カテゴリ別の手上げ件数</h2>
+    <p class="page-desc" style="margin-bottom: 14px;">
+      手上げ内訳の現状把握・KPIモニタリングに利用してください（カッコ内は全体に対する割合）。
+    </p>
+    <table>
+      <thead>
+        <tr>
+          <th>カテゴリ</th>
+          <th>件数</th>
+          <th>割合</th>
+        </tr>
+      </thead>
+      <tbody id="summary-rows"></tbody>
+    </table>
+  </div>
+
   <div class="toolbar">
+    <div class="field">
+      <label for="filter-category">カテゴリで絞り込み</label>
+      <select id="filter-category">
+        <option value="">すべて</option>
+      </select>
+    </div>
     <div class="field">
       <label for="filter-status">ステータスで絞り込み</label>
       <select id="filter-status">
@@ -113,18 +131,69 @@
   const rowsEl = document.getElementById("escalation-rows");
   const emptyEl = document.getElementById("empty-state");
   const filterStatus = document.getElementById("filter-status");
+  const filterCategory = document.getElementById("filter-category");
+  const escCategorySelect = document.getElementById("esc-category");
+  const summaryRowsEl = document.getElementById("summary-rows");
 
   const URGENCY_LABEL = { high: "高", mid: "中", low: "低" };
   const STATUS_LABEL = { open: "未対応", progress: "対応中", done: "解決済み" };
 
+  const ALL_CATEGORIES = [...ESCALATION_CATEGORIES, "その他"];
+  ALL_CATEGORIES.forEach((cat) => {
+    const opt1 = document.createElement("option");
+    opt1.value = cat;
+    opt1.textContent = cat;
+    escCategorySelect.appendChild(opt1);
+
+    const opt2 = document.createElement("option");
+    opt2.value = cat;
+    opt2.textContent = cat;
+    filterCategory.appendChild(opt2);
+  });
+
   document.getElementById("esc-datetime").value = nowForInput();
+
+  function renderSummary() {
+    const total = records.length;
+    summaryRowsEl.innerHTML = "";
+
+    if (total === 0) {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td colspan="3" class="empty-state" style="padding: 12px 0;">記録がまだありません。</td>`;
+      summaryRowsEl.appendChild(tr);
+      return;
+    }
+
+    ALL_CATEGORIES.forEach((cat) => {
+      const count = records.filter((r) => r.category === cat).length;
+      if (count === 0) return;
+      const pct = ((count / total) * 100).toFixed(1);
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td><span class="badge category">${escapeHtml(cat)}</span></td>
+        <td>${count} 件</td>
+        <td>${pct}%</td>
+      `;
+      summaryRowsEl.appendChild(tr);
+    });
+
+    const totalTr = document.createElement("tr");
+    totalTr.innerHTML = `<td><strong>合計</strong></td><td><strong>${total} 件</strong></td><td>100%</td>`;
+    summaryRowsEl.appendChild(totalTr);
+  }
 
   function render() {
     const status = filterStatus.value;
-    const filtered = records.filter((r) => !status || r.status === status);
+    const category = filterCategory.value;
+    const filtered = records.filter((r) => {
+      if (status && r.status !== status) return false;
+      if (category && r.category !== category) return false;
+      return true;
+    });
 
     rowsEl.innerHTML = "";
     emptyEl.style.display = filtered.length ? "none" : "block";
+    renderSummary();
 
     filtered
       .slice()
@@ -194,6 +263,7 @@
   });
 
   filterStatus.addEventListener("change", render);
+  filterCategory.addEventListener("change", render);
 
   render();
 </script>
