@@ -54,3 +54,28 @@ export interface GeneratedReport {
   partiesInfo: string;
   rawSummary: string;
 }
+
+// ナレッジベース
+export const KNOWLEDGE_CATEGORIES = [
+  "契約確認",
+  "工事関連",
+  "システム操作",
+  "クレーム対応",
+  "技術切り分け",
+  "V6システム関連",
+  "例外案件",
+  "その他",
+] as const;
+
+export type KnowledgeCategory = (typeof KNOWLEDGE_CATEGORIES)[number];
+
+export interface KnowledgeEntry {
+  id: string;
+  title: string;
+  category: string;
+  tags: string[];
+  content: string;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}

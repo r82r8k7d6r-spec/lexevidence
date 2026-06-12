@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Link from "next/link";
 import "./globals.css";
 import { createClient } from "@/lib/supabase/server";
 import UserNav from "@/components/UserNav";
@@ -42,7 +43,12 @@ export default async function RootLayout({
       <body className="min-h-full flex flex-col">
         {user && (
           <header className="border-b border-gray-200 bg-white px-4 py-3 flex items-center justify-between print:hidden">
-            <span className="text-sm font-semibold text-gray-800">マモリAI</span>
+            <div className="flex items-center gap-4">
+              <span className="text-sm font-semibold text-gray-800">マモリAI</span>
+              <Link href="/knowledge" className="text-sm text-gray-500 hover:text-gray-800 transition-colors">
+                ナレッジベース
+              </Link>
+            </div>
             <UserNav email={user.email ?? ""} />
           </header>
         )}
