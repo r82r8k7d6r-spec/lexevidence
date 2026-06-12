@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>コールセンター ナレッジベース</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<header class="site-header">
+  <div class="container header-inner">
+    <a class="logo" href="index.html">📞 コールセンター ナレッジベース</a>
+    <nav class="main-nav">
+      <a href="index.html" class="active">ホーム</a>
+      <a href="faq.html">FAQ</a>
+      <a href="flow.html">切り分けフロー</a>
+      <a href="escalation.html">手上げ記録</a>
+      <a href="claim.html">クレーム対応事例</a>
+    </nav>
+  </div>
+</header>
+
+<main class="container">
+  <h1 class="page-title">コールセンター ナレッジベース</h1>
+  <p class="page-desc">
+    お問い合わせ対応に必要な FAQ・切り分けフロー・エスカレーション記録・クレーム対応事例をまとめた社内向けツールです。
+    データはブラウザ内（localStorage）に保存されます。
+  </p>
+
+  <div class="card-grid">
+    <a class="nav-card" href="faq.html">
+      <div class="icon">❓</div>
+      <h3>FAQ 登録・検索</h3>
+      <p>よくある質問とその回答を登録・検索できます。対応中にキーワードで素早く検索可能です。</p>
+      <div class="count" id="count-faq">読込中...</div>
+    </a>
+
+    <a class="nav-card" href="flow.html">
+      <div class="icon">🧭</div>
+      <h3>技術切り分けフロー</h3>
+      <p>お問い合わせ内容に応じて質問に答えていくことで、対応方法を案内するフローチャートです。</p>
+      <div class="count" id="count-flow">対話形式で進行</div>
+    </a>
+
+    <a class="nav-card" href="escalation.html">
+      <div class="icon">🚨</div>
+      <h3>手上げ記録</h3>
+      <p>自己解決できない問い合わせをエスカレーションした際の記録を管理します。</p>
+      <div class="count" id="count-escalation">読込中...</div>
+    </a>
+
+    <a class="nav-card" href="claim.html">
+      <div class="icon">📋</div>
+      <h3>クレーム対応事例</h3>
+      <p>過去のクレーム対応事例と、その対応内容・再発防止策を蓄積・参照できます。</p>
+      <div class="count" id="count-claim">読込中...</div>
+    </a>
+  </div>
+
+  <div class="card">
+    <h2>使い方</h2>
+    <ul>
+      <li><strong>FAQ</strong>：お客様から頻繁に寄せられる質問とその回答を登録し、キーワードやカテゴリで検索できます。</li>
+      <li><strong>切り分けフロー</strong>：症状を選択していくことで、対応手順や案内文をその場で確認できます。解決しない場合はエスカレーションへの導線があります。</li>
+      <li><strong>手上げ記録</strong>：一次対応で解決できなかった問い合わせを記録し、対応状況（未対応・対応中・解決済み）を管理します。</li>
+      <li><strong>クレーム対応事例</strong>：過去のクレーム対応の内容・結果・教訓を記録し、類似事例の対応時に参照します。</li>
+    </ul>
+  </div>
+</main>
+
+<script src="js/storage.js"></script>
+<script>
+  const faqs = loadItems("faqs", []);
+  const escalations = loadItems("escalations", []);
+  const claims = loadItems("claims", []);
+
+  document.getElementById("count-faq").textContent = `${faqs.length} 件登録済み`;
+
+  const openEsc = escalations.filter((e) => e.status !== "done").length;
+  document.getElementById("count-escalation").textContent =
+    `${escalations.length} 件（未対応・対応中 ${openEsc} 件）`;
+
+  document.getElementById("count-claim").textContent = `${claims.length} 件登録済み`;
+</script>
+</body>
+</html>

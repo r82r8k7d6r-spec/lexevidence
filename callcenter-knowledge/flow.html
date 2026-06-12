@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>技術切り分けフロー | コールセンター ナレッジベース</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<header class="site-header">
+  <div class="container header-inner">
+    <a class="logo" href="index.html">📞 コールセンター ナレッジベース</a>
+    <nav class="main-nav">
+      <a href="index.html">ホーム</a>
+      <a href="faq.html">FAQ</a>
+      <a href="flow.html" class="active">切り分けフロー</a>
+      <a href="escalation.html">手上げ記録</a>
+      <a href="claim.html">クレーム対応事例</a>
+    </nav>
+  </div>
+</header>
+
+<main class="container">
+  <h1 class="page-title">技術切り分けフロー</h1>
+  <p class="page-desc">お問い合わせ内容に応じて質問に答えていくと、案内すべき対応手順が表示されます。解決しない場合は手上げ記録に進んでください。</p>
+
+  <div class="card">
+    <div class="flow-breadcrumb" id="breadcrumb"></div>
+
+    <div id="question-wrap">
+      <div class="flow-question" id="question-title"></div>
+      <div class="flow-options" id="options"></div>
+    </div>
+
+    <div id="result-wrap" style="display:none;">
+      <div class="flow-result-title" id="result-title"></div>
+      <ol class="flow-steps" id="result-steps"></ol>
+      <div class="btn-row">
+        <a href="faq.html" class="btn secondary">FAQを確認する</a>
+        <a href="escalation.html" class="btn danger" id="escalate-link" style="display:none;">手上げ記録に進む</a>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button type="button" class="btn secondary" id="back-btn">一つ前に戻る</button>
+      <button type="button" class="btn secondary" id="restart-btn">最初からやり直す</button>
+    </div>
+  </div>
+</main>
+
+<script src="js/storage.js"></script>
+<script>
+  const FLOW = {
+    start: "root",
+    nodes: {
+      root: {
+        type: "question",
+        title: "お問い合わせ内容を選択してください",
+        options: [
+          { label: "ログイン・アカウントに関する問題", next: "login" },
+          { label: "決済・料金に関する問題", next: "billing" },
+          { label: "データのアップロード・分析に関する問題", next: "upload" },
+          { label: "出力（PDF/レポート）に関する問題", next: "output" },
+          { label: "その他のお問い合わせ", next: "other_result" },
+        ],
+      },
+      login: {
+        type: "question",
+        title: "ログイン・アカウントについて、症状を選択してください",
+        options: [
+          { label: "パスワードを忘れた／再設定できない", next: "login_password_result" },
+          { label: "ログインボタンを押すとエラーになる", next: "login_error" },
+          { label: "確認メール・認証メールが届かない", next: "login_email_result" },
+        ],
+      },
+      login_error: {
+        type: "question",
+        title: "表示されるエラーの内容に近いものを選択してください",
+        options: [
+          { label: "「メールアドレスまたはパスワードが正しくありません」と表示される", next: "login_password_result" },
+          { label: "ページが真っ白になる／読み込み中のまま止まる", next: "login_session_result" },
+          { label: "上記に当てはまらない", next: "escalation_result" },
+        ],
+      },
+      login_password_result: {
+        type: "result",
+        title: "パスワード再設定をご案内ください",
+        steps: [
+          "ログイン画面の「パスワードをお忘れの方」リンクから登録メールアドレスを入力いただくようご案内します。",
+          "再設定メールが届かない場合は、迷惑メールフォルダや受信拒否設定をご確認いただきます。",
+          "数分待っても届かない場合は、登録メールアドレスの入力誤りがないか確認します。",
+        ],
+      },
+      login_email_result: {
+        type: "result",
+        title: "認証メールが届かない場合のご案内",
+        steps: [
+          "登録メールアドレスに誤りがないかご確認いただきます。",
+          "迷惑メールフォルダ、ドメイン指定受信・拒否設定をご確認いただきます。",
+          "上記で改善しない場合は、メールアドレスとお問い合わせ時刻を記録し手上げを行います。",
+        ],
+        escalate: true,
+      },
+      login_session_result: {
+        type: "result",
+        title: "画面が正しく表示されない場合のご案内",
+        steps: [
+          "ブラウザのキャッシュ・クッキーの削除、または別のブラウザ・デバイスでの再試行をご案内します。",
+          "改善しない場合は、発生日時・利用環境（OS・ブラウザ）をヒアリングします。",
+          "解消しない場合は手上げ記録に登録し、開発チームへ連携します。",
+        ],
+        escalate: true,
+      },
+      billing: {
+        type: "question",
+        title: "決済・料金について、症状を選択してください",
+        options: [
+          { label: "お支払いが完了しない／エラーになる", next: "billing_error_result" },
+          { label: "料金プランの変更・解約方法が分からない", next: "billing_plan_result" },
+          { label: "二重決済・請求内容に誤りがある", next: "escalation_result" },
+        ],
+      },
+      billing_error_result: {
+        type: "result",
+        title: "決済エラー時のご案内",
+        steps: [
+          "カード番号・有効期限・セキュリティコードの入力内容に誤りがないかご確認いただきます。",
+          "カード会社側で利用制限がかかっていないか、お客様にご確認いただきます。",
+          "別のお支払い方法・別のカードでの再試行をご案内します。",
+          "改善しない場合は決済ログの確認が必要なため、手上げ記録に登録します。",
+        ],
+        escalate: true,
+      },
+      billing_plan_result: {
+        type: "result",
+        title: "プラン変更・解約方法のご案内",
+        steps: [
+          "マイページの「ご契約情報」からプラン変更・解約のお手続きが可能であることをご案内します。",
+          "解約後も当月末まではサービスをご利用いただけることをお伝えします。",
+        ],
+      },
+      upload: {
+        type: "question",
+        title: "データのアップロード・分析について、症状を選択してください",
+        options: [
+          { label: "ファイルがアップロードできない", next: "upload_fail_result" },
+          { label: "アップロードは完了するが処理が終わらない", next: "upload_processing_result" },
+          { label: "分析結果の内容に誤りがある", next: "escalation_result" },
+        ],
+      },
+      upload_fail_result: {
+        type: "result",
+        title: "アップロードできない場合のご案内",
+        steps: [
+          "対応しているファイル形式・サイズの上限をご案内します。",
+          "通信環境（できればWi-Fi）をご確認いただき、再試行をお願いします。",
+          "改善しない場合は、ファイル形式・サイズ・表示されたエラーメッセージを記録し手上げを行います。",
+        ],
+        escalate: true,
+      },
+      upload_processing_result: {
+        type: "result",
+        title: "処理が完了しない場合のご案内",
+        steps: [
+          "ファイルサイズによっては処理に数分程度かかる場合があることをご案内します。",
+          "10分以上経過しても完了しない場合は、手上げ記録に登録し開発チームへ連携します。",
+        ],
+        escalate: true,
+      },
+      output: {
+        type: "question",
+        title: "出力（PDF/レポート）について、症状を選択してください",
+        options: [
+          { label: "PDFが生成されない／エラーになる", next: "output_fail_result" },
+          { label: "PDFはダウンロードできるが内容が崩れている", next: "escalation_result" },
+          { label: "ダウンロードボタンを押しても反応しない", next: "output_download_result" },
+        ],
+      },
+      output_fail_result: {
+        type: "result",
+        title: "PDF生成エラー時のご案内",
+        steps: [
+          "入力データに不足や、使用できない文字種が含まれていないかご確認いただきます。",
+          "時間をおいて再度生成をお試しいただくようご案内します。",
+          "改善しない場合は手上げ記録に登録します。",
+        ],
+        escalate: true,
+      },
+      output_download_result: {
+        type: "result",
+        title: "ダウンロードボタンが反応しない場合のご案内",
+        steps: [
+          "ブラウザのポップアップブロック設定をご確認いただきます。",
+          "別のブラウザ・デバイスでの再試行をご案内します。",
+        ],
+      },
+      other_result: {
+        type: "result",
+        title: "その他のお問い合わせ",
+        steps: [
+          "FAQページで類似の質問が登録されていないかご確認ください。",
+          "該当する内容がない場合は、お問い合わせ内容を手上げ記録に登録し、担当チームに確認します。",
+        ],
+        escalate: true,
+      },
+      escalation_result: {
+        type: "result",
+        title: "エスカレーションが必要な内容です",
+        steps: [
+          "お客様の連絡先・発生状況・発生日時を確認します。",
+          "「手上げ記録」ページから新規記録を登録します。",
+          "内容に応じて緊急度を選択し、担当チームへ連携します。",
+        ],
+        escalate: true,
+      },
+    },
+  };
+
+  let history = [];
+
+  const breadcrumbEl = document.getElementById("breadcrumb");
+  const questionWrapEl = document.getElementById("question-wrap");
+  const questionTitleEl = document.getElementById("question-title");
+  const optionsEl = document.getElementById("options");
+  const resultWrapEl = document.getElementById("result-wrap");
+  const resultTitleEl = document.getElementById("result-title");
+  const resultStepsEl = document.getElementById("result-steps");
+  const escalateLinkEl = document.getElementById("escalate-link");
+  const backBtn = document.getElementById("back-btn");
+  const restartBtn = document.getElementById("restart-btn");
+
+  function currentNodeId() {
+    return history.length ? history[history.length - 1].nodeId : FLOW.start;
+  }
+
+  function render() {
+    const node = FLOW.nodes[currentNodeId()];
+
+    const crumbs = ["開始", ...history.map((h) => h.label)];
+    breadcrumbEl.textContent = crumbs.join(" ＞ ");
+
+    if (node.type === "question") {
+      questionWrapEl.style.display = "block";
+      resultWrapEl.style.display = "none";
+      questionTitleEl.textContent = node.title;
+      optionsEl.innerHTML = "";
+      node.options.forEach((opt) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "flow-option";
+        btn.textContent = opt.label;
+        btn.addEventListener("click", () => {
+          history.push({ nodeId: opt.next, label: opt.label });
+          render();
+        });
+        optionsEl.appendChild(btn);
+      });
+    } else {
+      questionWrapEl.style.display = "none";
+      resultWrapEl.style.display = "block";
+      resultTitleEl.textContent = node.title;
+      resultStepsEl.innerHTML = "";
+      node.steps.forEach((step) => {
+        const li = document.createElement("li");
+        li.textContent = step;
+        resultStepsEl.appendChild(li);
+      });
+      escalateLinkEl.style.display = node.escalate ? "inline-block" : "none";
+    }
+
+    backBtn.disabled = history.length === 0;
+  }
+
+  backBtn.addEventListener("click", () => {
+    history.pop();
+    render();
+  });
+
+  restartBtn.addEventListener("click", () => {
+    history = [];
+    render();
+  });
+
+  render();
+</script>
+</body>
+</html>

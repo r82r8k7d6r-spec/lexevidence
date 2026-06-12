@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>手上げ記録 | コールセンター ナレッジベース</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<header class="site-header">
+  <div class="container header-inner">
+    <a class="logo" href="index.html">📞 コールセンター ナレッジベース</a>
+    <nav class="main-nav">
+      <a href="index.html">ホーム</a>
+      <a href="faq.html">FAQ</a>
+      <a href="flow.html">切り分けフロー</a>
+      <a href="escalation.html" class="active">手上げ記録</a>
+      <a href="claim.html">クレーム対応事例</a>
+    </nav>
+  </div>
+</header>
+
+<main class="container">
+  <h1 class="page-title">手上げ記録</h1>
+  <p class="page-desc">一次対応で解決できなかった問い合わせを記録し、対応状況を管理します。</p>
+
+  <div class="card">
+    <h2>新規登録</h2>
+    <form id="escalation-form">
+      <div class="form-grid">
+        <div class="field">
+          <label for="esc-datetime">発生日時</label>
+          <input type="datetime-local" id="esc-datetime" required />
+        </div>
+        <div class="field">
+          <label for="esc-agent">対応者名</label>
+          <input type="text" id="esc-agent" required placeholder="例：山田" />
+        </div>
+        <div class="field">
+          <label for="esc-customer">お客様情報（会員ID・連絡先など）</label>
+          <input type="text" id="esc-customer" placeholder="例：会員ID 12345 / xxx@example.com" />
+        </div>
+        <div class="field">
+          <label for="esc-category">カテゴリ</label>
+          <select id="esc-category">
+            <option value="ログイン・認証">ログイン・認証</option>
+            <option value="料金・決済">料金・決済</option>
+            <option value="アップロード・分析">アップロード・分析</option>
+            <option value="出力（PDF/レポート）">出力（PDF/レポート）</option>
+            <option value="その他">その他</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="esc-urgency">緊急度</label>
+          <select id="esc-urgency">
+            <option value="high">高</option>
+            <option value="mid" selected>中</option>
+            <option value="low">低</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="esc-assignee">エスカレーション先</label>
+          <input type="text" id="esc-assignee" placeholder="例：開発チーム / SV / 決済担当" />
+        </div>
+        <div class="field full">
+          <label for="esc-detail">内容</label>
+          <textarea id="esc-detail" required placeholder="お問い合わせ内容・これまでの対応・確認事項などを記入してください"></textarea>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button type="submit" class="btn">登録する</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="toolbar">
+    <div class="field">
+      <label for="filter-status">ステータスで絞り込み</label>
+      <select id="filter-status">
+        <option value="">すべて</option>
+        <option value="open">未対応</option>
+        <option value="progress">対応中</option>
+        <option value="done">解決済み</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="card">
+    <table>
+      <thead>
+        <tr>
+          <th>発生日時</th>
+          <th>カテゴリ</th>
+          <th>緊急度</th>
+          <th>対応者</th>
+          <th>お客様情報</th>
+          <th>内容</th>
+          <th>エスカレーション先</th>
+          <th>ステータス</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="escalation-rows"></tbody>
+    </table>
+    <p class="empty-state" id="empty-state" style="display:none;">記録はまだありません。</p>
+  </div>
+</main>
+
+<script src="js/storage.js"></script>
+<script>
+  let records = loadItems("escalations", []);
+
+  const rowsEl = document.getElementById("escalation-rows");
+  const emptyEl = document.getElementById("empty-state");
+  const filterStatus = document.getElementById("filter-status");
+
+  const URGENCY_LABEL = { high: "高", mid: "中", low: "低" };
+  const STATUS_LABEL = { open: "未対応", progress: "対応中", done: "解決済み" };
+
+  document.getElementById("esc-datetime").value = nowForInput();
+
+  function render() {
+    const status = filterStatus.value;
+    const filtered = records.filter((r) => !status || r.status === status);
+
+    rowsEl.innerHTML = "";
+    emptyEl.style.display = filtered.length ? "none" : "block";
+
+    filtered
+      .slice()
+      .sort((a, b) => (b.datetime || "").localeCompare(a.datetime || ""))
+      .forEach((r) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${escapeHtml((r.datetime || "").replace("T", " "))}</td>
+          <td><span class="badge category">${escapeHtml(r.category)}</span></td>
+          <td><span class="badge ${r.urgency}">${URGENCY_LABEL[r.urgency] || r.urgency}</span></td>
+          <td>${escapeHtml(r.agent)}</td>
+          <td>${escapeHtml(r.customer || "-")}</td>
+          <td>${escapeHtml(r.detail).replace(/\n/g, "<br>")}</td>
+          <td>${escapeHtml(r.assignee || "-")}</td>
+          <td></td>
+          <td><button type="button" class="btn danger btn-delete">削除</button></td>
+        `;
+
+        const statusTd = tr.children[7];
+        const select = document.createElement("select");
+        ["open", "progress", "done"].forEach((s) => {
+          const opt = document.createElement("option");
+          opt.value = s;
+          opt.textContent = STATUS_LABEL[s];
+          if (s === r.status) opt.selected = true;
+          select.appendChild(opt);
+        });
+        select.addEventListener("change", () => {
+          r.status = select.value;
+          saveItems("escalations", records);
+          render();
+        });
+        statusTd.appendChild(select);
+
+        tr.querySelector(".btn-delete").addEventListener("click", () => {
+          if (!confirm("この記録を削除しますか？")) return;
+          records = records.filter((x) => x.id !== r.id);
+          saveItems("escalations", records);
+          render();
+        });
+
+        rowsEl.appendChild(tr);
+      });
+  }
+
+  document.getElementById("escalation-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const record = {
+      id: generateId(),
+      datetime: document.getElementById("esc-datetime").value,
+      agent: document.getElementById("esc-agent").value.trim(),
+      customer: document.getElementById("esc-customer").value.trim(),
+      category: document.getElementById("esc-category").value,
+      urgency: document.getElementById("esc-urgency").value,
+      assignee: document.getElementById("esc-assignee").value.trim(),
+      detail: document.getElementById("esc-detail").value.trim(),
+      status: "open",
+    };
+    if (!record.agent || !record.detail) return;
+
+    records.push(record);
+    saveItems("escalations", records);
+    e.target.reset();
+    document.getElementById("esc-datetime").value = nowForInput();
+    document.getElementById("esc-urgency").value = "mid";
+    render();
+  });
+
+  filterStatus.addEventListener("change", render);
+
+  render();
+</script>
+</body>
+</html>

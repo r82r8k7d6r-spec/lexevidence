@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FAQ登録・検索 | コールセンター ナレッジベース</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<header class="site-header">
+  <div class="container header-inner">
+    <a class="logo" href="index.html">📞 コールセンター ナレッジベース</a>
+    <nav class="main-nav">
+      <a href="index.html">ホーム</a>
+      <a href="faq.html" class="active">FAQ</a>
+      <a href="flow.html">切り分けフロー</a>
+      <a href="escalation.html">手上げ記録</a>
+      <a href="claim.html">クレーム対応事例</a>
+    </nav>
+  </div>
+</header>
+
+<main class="container">
+  <h1 class="page-title">FAQ 登録・検索</h1>
+  <p class="page-desc">よくある質問とその回答を登録・検索できます。対応中はキーワードやカテゴリで素早く絞り込みできます。</p>
+
+  <div class="card">
+    <h2>新しいFAQを登録</h2>
+    <form id="faq-form">
+      <div class="form-grid">
+        <div class="field full">
+          <label for="faq-question">質問</label>
+          <input type="text" id="faq-question" required placeholder="例：ログインパスワードを忘れた場合はどうすればよいですか？" />
+        </div>
+        <div class="field">
+          <label for="faq-category">カテゴリ</label>
+          <select id="faq-category">
+            <option value="ログイン・認証">ログイン・認証</option>
+            <option value="料金・決済">料金・決済</option>
+            <option value="操作方法">操作方法</option>
+            <option value="不具合・エラー">不具合・エラー</option>
+            <option value="その他">その他</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="faq-tags">タグ（カンマ区切り）</label>
+          <input type="text" id="faq-tags" placeholder="例：パスワード, 再設定" />
+        </div>
+        <div class="field full">
+          <label for="faq-answer">回答</label>
+          <textarea id="faq-answer" required placeholder="お客様への案内文を入力してください"></textarea>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button type="submit" class="btn">登録する</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="toolbar">
+    <div class="field">
+      <label for="search-input">キーワード検索</label>
+      <input type="search" id="search-input" placeholder="質問・回答・タグから検索" />
+    </div>
+    <div class="field">
+      <label for="filter-category">カテゴリで絞り込み</label>
+      <select id="filter-category">
+        <option value="">すべて</option>
+        <option value="ログイン・認証">ログイン・認証</option>
+        <option value="料金・決済">料金・決済</option>
+        <option value="操作方法">操作方法</option>
+        <option value="不具合・エラー">不具合・エラー</option>
+        <option value="その他">その他</option>
+      </select>
+    </div>
+  </div>
+
+  <div id="faq-list"></div>
+  <p class="empty-state" id="empty-state" style="display:none;">該当するFAQが見つかりませんでした。</p>
+</main>
+
+<script src="js/storage.js"></script>
+<script>
+  const DEFAULT_FAQS = [
+    {
+      id: "seed-1",
+      question: "ログインパスワードを忘れた場合はどうすればよいですか？",
+      answer: "ログイン画面の「パスワードをお忘れの方」リンクから登録メールアドレスを入力すると、パスワード再設定用のメールが送信されます。メールが届かない場合は迷惑メールフォルダもご確認いただくよう案内してください。",
+      category: "ログイン・認証",
+      tags: ["パスワード", "再設定", "ログイン"],
+      createdAt: "2025-01-10 10:00",
+    },
+    {
+      id: "seed-2",
+      question: "料金プランの変更や解約はどこから行えますか？",
+      answer: "マイページの「ご契約情報」から、プラン変更・解約のお手続きが可能です。解約後も当月末まではサービスをご利用いただけます。",
+      category: "料金・決済",
+      tags: ["解約", "プラン変更", "料金"],
+      createdAt: "2025-01-12 11:30",
+    },
+    {
+      id: "seed-3",
+      question: "音声ファイルをアップロードしても処理が完了しません。",
+      answer: "アップロード可能なファイル形式・サイズの上限をご確認ください。大容量ファイルの場合は処理に数分かかることがあります。10分以上完了しない場合はエスカレーション記録に登録し、開発チームへ連携してください。",
+      category: "不具合・エラー",
+      tags: ["アップロード", "音声", "処理エラー"],
+      createdAt: "2025-01-15 09:15",
+    },
+    {
+      id: "seed-4",
+      question: "作成したPDFレポートをダウンロードできません。",
+      answer: "ブラウザのポップアップブロック設定をご確認のうえ、再度ダウンロードボタンを押していただくよう案内してください。改善しない場合は別のブラウザでの再試行をお願いしてください。",
+      category: "操作方法",
+      tags: ["PDF", "ダウンロード", "出力"],
+      createdAt: "2025-01-18 14:00",
+    },
+  ];
+
+  let faqs = loadItems("faqs", DEFAULT_FAQS);
+
+  const listEl = document.getElementById("faq-list");
+  const emptyEl = document.getElementById("empty-state");
+  const searchInput = document.getElementById("search-input");
+  const filterCategory = document.getElementById("filter-category");
+
+  function render() {
+    const keyword = searchInput.value.trim().toLowerCase();
+    const category = filterCategory.value;
+
+    const filtered = faqs.filter((f) => {
+      const matchesCategory = !category || f.category === category;
+      if (!matchesCategory) return false;
+      if (!keyword) return true;
+      const haystack = [f.question, f.answer, ...(f.tags || [])].join(" ").toLowerCase();
+      return haystack.includes(keyword);
+    });
+
+    listEl.innerHTML = "";
+    emptyEl.style.display = filtered.length ? "none" : "block";
+
+    filtered
+      .slice()
+      .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""))
+      .forEach((f) => {
+        const item = document.createElement("div");
+        item.className = "faq-item";
+        const tags = (f.tags || []).map((t) => `<span class="tag">#${escapeHtml(t)}</span>`).join("");
+        item.innerHTML = `
+          <button class="faq-question" type="button">
+            <span>${escapeHtml(f.question)}</span>
+            <span class="badge category">${escapeHtml(f.category || "その他")}</span>
+          </button>
+          <div class="faq-answer">
+            <div>${escapeHtml(f.answer).replace(/\n/g, "<br>")}</div>
+            <div class="faq-meta">
+              ${tags}
+              <span class="tag">登録日時: ${escapeHtml(f.createdAt || "-")}</span>
+            </div>
+            <div class="btn-row">
+              <button type="button" class="btn danger btn-delete" data-id="${f.id}">削除</button>
+            </div>
+          </div>
+        `;
+        const questionBtn = item.querySelector(".faq-question");
+        const answerEl = item.querySelector(".faq-answer");
+        questionBtn.addEventListener("click", () => {
+          answerEl.classList.toggle("open");
+        });
+        item.querySelector(".btn-delete").addEventListener("click", (e) => {
+          e.stopPropagation();
+          if (!confirm("このFAQを削除しますか？")) return;
+          faqs = faqs.filter((x) => x.id !== f.id);
+          saveItems("faqs", faqs);
+          render();
+        });
+        listEl.appendChild(item);
+      });
+  }
+
+  document.getElementById("faq-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const question = document.getElementById("faq-question").value.trim();
+    const answer = document.getElementById("faq-answer").value.trim();
+    const category = document.getElementById("faq-category").value;
+    const tags = document.getElementById("faq-tags").value
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean);
+
+    if (!question || !answer) return;
+
+    faqs.push({
+      id: generateId(),
+      question,
+      answer,
+      category,
+      tags,
+      createdAt: nowForInput().replace("T", " "),
+    });
+    saveItems("faqs", faqs);
+    e.target.reset();
+    document.getElementById("faq-category").value = category;
+    render();
+  });
+
+  searchInput.addEventListener("input", render);
+  filterCategory.addEventListener("change", render);
+
+  render();
+</script>
+</body>
+</html>
